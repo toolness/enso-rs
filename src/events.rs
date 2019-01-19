@@ -23,11 +23,11 @@ pub enum KeypressType {
 }
 
 impl KeypressType {
-    pub fn from_w_param(w_param: WPARAM) -> Self {
+    pub fn from_w_param(w_param: WPARAM) -> Option<Self> {
         match w_param as u32 {
-            WM_KEYDOWN => KeypressType::KeyDown,
-            WM_KEYUP => KeypressType::KeyUp,
-            _ => panic!("Invalid wParam: {}", w_param),
+            WM_KEYDOWN => Some(KeypressType::KeyDown),
+            WM_KEYUP => Some(KeypressType::KeyUp),
+            _ => None,
         }
     }
 }
@@ -52,7 +52,13 @@ impl Event {
     pub fn from_message(msg: &MSG) -> Option<Self> {
         match msg.message {
             WM_USER_KEYPRESS => {
-                Some(Event::Keypress(KeypressType::from_w_param(msg.wParam), msg.lParam as i32))
+                match KeypressType::from_w_param(msg.wParam) {
+                    Some(keypress_type) => Some(Event::Keypress(keypress_type, msg.lParam as i32)),
+                    None => {
+                        println!("Warning: WM_USER_KEYPRESS with invalid wParam: {}", msg.wParam);
+                        None
+                    }
+                }
             },
             _ => None
         }

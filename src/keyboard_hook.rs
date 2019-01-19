@@ -55,7 +55,7 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
                  n_code, w_param, vk_code);
         if vk_code == VK_CAPITAL {
             if w_param == WM_KEYUP as usize {
-                Event::Keypress(KeypressType::from_w_param(w_param), vk_code).queue();
+                Event::Keypress(KeypressType::from_w_param(w_param).unwrap(), vk_code).queue();
             }
             // We processed the keystroke, so don't pass it on to the underlying application.
             return -1;
