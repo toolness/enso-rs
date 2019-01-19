@@ -4,18 +4,16 @@ use winapi::um::winuser::{
     SetWindowsHookExA,
     UnhookWindowsHookEx,
     CallNextHookEx,
-    PostThreadMessageA,
     KBDLLHOOKSTRUCT,
     VK_CAPITAL,
     WM_KEYUP,
-    WM_QUIT,
     WH_KEYBOARD_LL
 };
 
-use winapi::um::processthreadsapi::GetCurrentThreadId;
-
 use winapi::shared::windef::HHOOK;
 use winapi::shared::ntdef::NULL;
+
+use super::events::{Event, KeypressType};
 
 pub struct KeyboardHook {
     hook_id: HHOOK,
@@ -57,9 +55,7 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
                  n_code, w_param, vk_code);
         if vk_code == VK_CAPITAL {
             if w_param == WM_KEYUP as usize {
-                if PostThreadMessageA(GetCurrentThreadId(), WM_QUIT, 0, 0) == 0 {
-                    println!("Warning: PostThreadMessageA() failed!");
-                }
+                Event::Keypress(KeypressType::from_w_param(w_param), vk_code).queue();
             }
             // We processed the keystroke, so don't pass it on to the underlying application.
             return -1;
