@@ -5,12 +5,21 @@ use winapi::um::winuser::{
     UnhookWindowsHookEx,
     CallNextHookEx,
     GetMessageA,
+    PostThreadMessageA,
+    KBDLLHOOKSTRUCT,
     MSG,
-    WH_KEYBOARD_LL,
+    VK_CAPITAL,
+    WM_KEYUP,
+    WM_QUIT,
+    WH_KEYBOARD_LL
 };
 
 use winapi::shared::windef::POINT;
-use winapi::um::processthreadsapi::GetCurrentProcessId;
+
+use winapi::um::processthreadsapi::{
+    GetCurrentProcessId,
+    GetCurrentThreadId
+};
 
 use std::ptr::null_mut;
 
@@ -19,9 +28,17 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
     if n_code < 0 {
         CallNextHookEx(null_mut(), n_code, w_param, l_param)
     } else {
-        println!("In hook_callback() with n_code={}, w_param={}, processId={}",
-                 n_code, w_param, GetCurrentProcessId());
-        // TODO: Process the keystroke.
+        let info = l_param as *const KBDLLHOOKSTRUCT;
+        let vk_code = (*info).vkCode as i32;
+        println!("In hook_callback() with n_code={}, w_param={}, processId={}, vkCode={}",
+                 n_code, w_param, GetCurrentProcessId(), vk_code);
+        if vk_code == VK_CAPITAL {
+            if w_param == WM_KEYUP as usize {
+                PostThreadMessageA(GetCurrentThreadId(), WM_QUIT, 0, 0);
+            }
+            // We processed the keystroke, so don't pass it on to the underlying application.
+            return -1;
+        }
         CallNextHookEx(null_mut(), n_code, w_param, l_param)
     }
 }
@@ -34,7 +51,7 @@ fn main() {
     }
 
     println!("Installed key hook with ID {:?}.", hook_id);
-    println!("Press CTRL-C to exit.");
+    println!("Press CAPS LOCK to exit.");
 
     let mut msg = MSG {
         hwnd: null_mut(),
@@ -46,19 +63,17 @@ fn main() {
     };
 
     loop {
-        unsafe {
-            let result = GetMessageA(&mut msg, null_mut(), 0, 0);
-            if result == 0 {
-                // WM_QUIT was received.
-                println!("Received WM_QUIT.");
-            } else if result == -1 {
-                println!("Received error.");
-                // An error was received.
-            } else {
-                println!("Got a message {}", msg.message);
-            }
+        let result = unsafe { GetMessageA(&mut msg, null_mut(), 0, 0) };
+        if result == 0 {
+            // WM_QUIT was received.
+            println!("Received WM_QUIT.");
+            break;
+        } else if result == -1 {
+            println!("Received error.");
+            // An error was received.
+        } else {
+            println!("Got a message {}", msg.message);
         }
-        break;
     }
 
     let unhook_result;
@@ -66,4 +81,5 @@ fn main() {
         unhook_result = UnhookWindowsHookEx(hook_id);
     }
     println!("unhook_result is {}", unhook_result);
+    println!("Farewell.");
 }
