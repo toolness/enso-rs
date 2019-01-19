@@ -57,7 +57,9 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
                  n_code, w_param, vk_code);
         if vk_code == VK_CAPITAL {
             if w_param == WM_KEYUP as usize {
-                PostThreadMessageA(GetCurrentThreadId(), WM_QUIT, 0, 0);
+                if PostThreadMessageA(GetCurrentThreadId(), WM_QUIT, 0, 0) == 0 {
+                    println!("Warning: PostThreadMessageA() failed!");
+                }
             }
             // We processed the keystroke, so don't pass it on to the underlying application.
             return -1;
