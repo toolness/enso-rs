@@ -1,4 +1,6 @@
 use std::ptr::null_mut;
+use std::cell::RefCell;
+use std::sync::mpsc::Sender;
 
 use winapi::um::winuser::{
     SetWindowsHookExA,
@@ -7,20 +9,41 @@ use winapi::um::winuser::{
     KBDLLHOOKSTRUCT,
     VK_CAPITAL,
     WM_KEYUP,
+    WM_KEYDOWN,
+    WM_SYSKEYUP,
+    WM_SYSKEYDOWN,
     WH_KEYBOARD_LL
 };
 
 use winapi::shared::windef::HHOOK;
 use winapi::shared::ntdef::NULL;
 
-use super::events::{Event, KeypressType};
+use super::events::{Event};
+
+struct HookState {
+    sender: Sender<Event>,
+    in_quasimode: bool,
+}
+
+thread_local! {
+    static HOOK_STATE: RefCell<Option<HookState>> = RefCell::new(None);
+}
 
 pub struct KeyboardHook {
     hook_id: HHOOK,
 }
 
 impl KeyboardHook {
-    pub fn install() -> Self {
+    pub fn install(sender: Sender<Event>) -> Self {
+        HOOK_STATE.with(|s| {
+            if s.borrow().is_some() {
+                panic!("Only one KeyboardHook can be active at once!");
+            }
+            *s.borrow_mut() = Some(HookState {
+                sender,
+                in_quasimode: false
+            });
+        });
         let hook_id = unsafe {
             SetWindowsHookExA(WH_KEYBOARD_LL, Some(hook_callback), null_mut(), 0)
         };
@@ -41,6 +64,12 @@ impl Drop for KeyboardHook {
         if unsafe { UnhookWindowsHookEx(self.hook_id) } == 0 {
             panic!("UnhookWindowsHookEx failed!");
         }
+        HOOK_STATE.with(|s| {
+            if s.borrow().is_none() {
+                panic!("Assertion failure, expected hook state to exist!");
+            }
+            *s.borrow_mut() = None;
+        });
     }
 }
 
@@ -51,15 +80,64 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
     } else {
         let info = l_param as *const KBDLLHOOKSTRUCT;
         let vk_code = (*info).vkCode as i32;
-        println!("In hook_callback() with n_code={}, w_param={}, vkCode={}",
-                 n_code, w_param, vk_code);
-        if vk_code == VK_CAPITAL {
-            if w_param == WM_KEYUP as usize {
-                Event::Keypress(KeypressType::from_w_param(w_param).unwrap(), vk_code).queue();
+        let eat_key: bool = HOOK_STATE.with(|s| match *s.borrow_mut() {
+            None => {
+                println!("Expected hook state to exist!");
+                false
+            },
+            Some(ref mut state) => {
+                let is_quasimode_key = vk_code == VK_CAPITAL;
+                let wm_type = w_param as u32;
+
+                // Note that WM_SYSKEYUP and WM_SYSKEYDOWN can be set
+                // if the alt key is down, even if it's down in combination
+                // with other keys.
+                let is_key_up = wm_type == WM_KEYUP || wm_type == WM_SYSKEYUP;
+                let is_key_down = wm_type == WM_KEYDOWN || wm_type == WM_SYSKEYDOWN;
+                let mut force_eat_key = false;
+
+                let possible_event: Option<Event> = if state.in_quasimode {
+                    if is_quasimode_key {
+                        if is_key_up {
+                            state.in_quasimode = false;
+                            Some(Event::QuasimodeEnd)
+                        } else {
+                            // This is likely the quasimode key being auto-repeated.
+                            force_eat_key = true;
+                            None
+                        }
+                    } else if is_key_down {
+                        Some(Event::Keypress(vk_code))
+                    } else {
+                        None
+                    }
+                } else {
+                    if is_quasimode_key && is_key_down {
+                        state.in_quasimode = true;
+                        Some(Event::QuasimodeStart)
+                    } else {
+                        None
+                    }
+                };
+                match possible_event {
+                    None => force_eat_key,
+                    Some(event) => {
+                        match state.sender.send(event) {
+                            Ok(()) => true,
+                            Err(e) => {
+                                println!("Error sending event: {:?}", e);
+                                false
+                            }
+                        }
+                    }
+                }
             }
+        });
+        if eat_key {
             // We processed the keystroke, so don't pass it on to the underlying application.
-            return -1;
+            -1
+        } else {
+            CallNextHookEx(null_mut(), n_code, w_param, l_param)
         }
-        CallNextHookEx(null_mut(), n_code, w_param, l_param)
     }
 }
