@@ -1,6 +1,10 @@
 use std::ptr::null_mut;
 use winapi::ctypes::c_void;
 use winapi::Interface;
+use winapi::shared::windef::{
+    HWND,
+    HDC
+};
 use winapi::um::d3d11::{
     D3D11CreateDevice,
     ID3D11Device,
@@ -33,6 +37,16 @@ use winapi::um::d2d1::{
     D2D1_RENDER_TARGET_TYPE_DEFAULT,
     D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
     D2D1_FEATURE_LEVEL_DEFAULT,
+    D2D1_DC_INITIALIZE_MODE_COPY
+};
+use winapi::um::wingdi::{
+    BLENDFUNCTION,
+    AC_SRC_ALPHA
+};
+use winapi::um::winuser::{
+    UpdateLayeredWindowIndirect,
+    UPDATELAYEREDWINDOWINFO,
+    ULW_ALPHA
 };
 use direct2d::factory::Factory;
 use direct2d::render_target::DxgiSurfaceRenderTarget;
@@ -193,6 +207,50 @@ impl Drop for Direct3DTexture {
 pub struct GdiFriendlyRenderTarget {
     dxgi_target: DxgiSurfaceRenderTarget,
     gdi_interop_target: *mut ID2D1GdiInteropRenderTarget,
+}
+
+impl GdiFriendlyRenderTarget {
+    pub fn update_layered_window(&self, hwnd: HWND) {
+        let mut hdc: HDC = null_mut();
+        unsafe {
+            let result = (*self.gdi_interop_target).GetDC(
+                D2D1_DC_INITIALIZE_MODE_COPY,
+                &mut hdc
+            );
+            if result != S_OK {
+                panic!("GetDC() returned {:x}!", result);
+            }
+        }
+        let blendfunc = BLENDFUNCTION {
+            SourceConstantAlpha: 255,
+            AlphaFormat: AC_SRC_ALPHA,
+            BlendFlags: 0,
+            BlendOp: 0
+        };
+        let mut update_info = UPDATELAYEREDWINDOWINFO {
+            cbSize: std::mem::size_of::<UPDATELAYEREDWINDOWINFO>() as u32,
+            hdcDst: null_mut(),
+            // TODO: We may actually need to specify values for the size/point stuff,
+            // I'm not sure.
+            pptDst: null_mut(),
+            psize: null_mut(),
+            hdcSrc: hdc,
+            pptSrc: null_mut(),
+            crKey: 0,
+            pblend: &blendfunc,
+            dwFlags: ULW_ALPHA,
+            prcDirty: null_mut()
+        };
+        unsafe {
+            if UpdateLayeredWindowIndirect(hwnd, &mut update_info) == 0 {
+                panic!("UpdateLayeredWindowIndirect() failed!");
+            }
+            let result = (*self.gdi_interop_target).ReleaseDC(null_mut());
+            if result != S_OK {
+                panic!("ReleaseDC() returned {}!", result);
+            }
+        }
+    }
 }
 
 impl Drop for GdiFriendlyRenderTarget {
