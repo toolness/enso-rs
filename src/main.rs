@@ -21,8 +21,8 @@ fn main() {
         exit_event_loop();
     });
 
-    println!("Installed key hook.");
-    println!("Press CAPS LOCK to exit.");
+    println!("Starting Enso.");
+    println!("To exit, hold down CAPS LOCK and type 'QUIT'.");
 
     eloop.run();
     keyhook.uninstall();
