@@ -71,9 +71,11 @@ impl TransparentWindow {
         winuser::SetForegroundWindow(old_fg_window);
 
         use super::direct3d::Direct3DDevice;
+        use direct2d::render_target::RenderTarget;
 
-        // TODO: Create a texture and bind Direct2D to it,
+        // Create a texture and bind Direct2D to it,
         // as per https://msdn.microsoft.com/en-us/magazine/ee819134.aspx.
+
         let mut d3d = Direct3DDevice::new();
         println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
         let mut texture = d3d.create_texture_2d(width, height);
@@ -81,18 +83,7 @@ impl TransparentWindow {
         let factory = direct2d::factory::Factory::new().expect("Creating Direct2D factory failed");
         let mut target = texture.create_d2d_render_target(&factory);
         println!("Created Direct2D render target.");
-        // let d2d = d3d.create_d2d_device(&factory);
-        // println!("Created Direct2D device.");
 
-        use direct2d::render_target::RenderTarget;
-
-//        let mut context = DeviceContext::create(&d2d, true).expect("Creating Direct2D device context failed");
-
-//        context.begin_draw();
-//        match context.end_draw() {
-//            Ok(_) => { println!("Drawing successful.") },
-//            Err(e) => { println!("Error drawing: {:?}", e) }
-//        };
         target.dxgi_target.begin_draw();
         target.update_layered_window(window);
         println!("Updated layered window.");
