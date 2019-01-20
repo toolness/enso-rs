@@ -42,7 +42,7 @@ impl TransparentWindow {
         WINDOW_CLASS
     }
 
-    unsafe fn create_window(width: i32, height: i32) -> windef::HWND {
+    unsafe fn create_window(width: u32, height: u32) -> windef::HWND {
         Self::create_window_class();
         let old_fg_window = winuser::GetForegroundWindow();
         let ex_style = winuser::WS_EX_LAYERED |
@@ -57,8 +57,8 @@ impl TransparentWindow {
             window_style,                   /* dwStyle      */
             0,                              /* x            */
             0,                              /* y            */
-            width,                          /* nWidth       */
-            height,                         /* nHeight      */
+            width as i32,                   /* nWidth       */
+            height as i32,                  /* nHeight      */
             null_mut(),                     /* hWndParent   */
             null_mut(),                     /* hMenu        */
             GetModuleHandleA(null_mut()),   /* hInstance    */
@@ -74,13 +74,15 @@ impl TransparentWindow {
 
         // TODO: Create a texture and bind Direct2D to it,
         // as per https://msdn.microsoft.com/en-us/magazine/ee819134.aspx.
-        let d3d = Direct3DDevice::new();
+        let mut d3d = Direct3DDevice::new();
         println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
+        let _texture = d3d.create_texture_2d(width, height);
+        println!("Created 2D texture.");
 
         window
     }
 
-    pub fn new(width: i32, height: i32) -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         TransparentWindow {
             hwnd: unsafe { Self::create_window(width, height) }
         }
