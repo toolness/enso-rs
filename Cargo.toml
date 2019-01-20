@@ -14,3 +14,4 @@ winapi = { version = "0.3", features = [
     "d3d11",
     "winerror"
 ] }
+direct2d = "0.2"

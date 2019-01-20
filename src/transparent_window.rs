@@ -76,9 +76,11 @@ impl TransparentWindow {
         // as per https://msdn.microsoft.com/en-us/magazine/ee819134.aspx.
         let mut d3d = Direct3DDevice::new();
         println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
-        let _texture = d3d.create_texture_2d(width, height);
+        let mut texture = d3d.create_texture_2d(width, height);
         println!("Created 2D texture.");
-
+        let factory = direct2d::factory::Factory::new().expect("Creating Direct2D factory failed");
+        let _target = texture.create_d2d_render_target(&factory);
+        println!("Created Direct2D render target.");
         window
     }
 

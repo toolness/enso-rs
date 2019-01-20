@@ -20,7 +20,20 @@ use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
 use winapi::um::d3dcommon::{
     D3D_DRIVER_TYPE_HARDWARE,
 };
+use winapi::um::dcommon::{
+    D2D1_PIXEL_FORMAT,
+    D2D1_ALPHA_MODE_PREMULTIPLIED
+};
 use winapi::shared::winerror::S_OK;
+use winapi::um::d2d1::{
+    ID2D1RenderTarget,
+    D2D1_RENDER_TARGET_PROPERTIES,
+    D2D1_RENDER_TARGET_TYPE_DEFAULT,
+    D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
+    D2D1_FEATURE_LEVEL_DEFAULT,
+};
+use direct2d::factory::Factory;
+use direct2d::render_target::DxgiSurfaceRenderTarget;
 
 pub struct Direct3DDevice {
     device: *mut ID3D11Device,
@@ -110,6 +123,44 @@ impl Direct3DTexture {
         }
 
         Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface }
+    }
+
+    pub fn create_d2d_render_target(&mut self, factory: &Factory) -> DxgiSurfaceRenderTarget {
+        let (dpi_x, dpi_y) = factory.get_desktop_dpi();
+        let props = D2D1_RENDER_TARGET_PROPERTIES {
+            _type: D2D1_RENDER_TARGET_TYPE_DEFAULT,
+            dpiX: dpi_x,
+            dpiY: dpi_y,
+
+            // This actually differs from what is advised in the
+            // article I read, which recommends D2D1_RENDER_TARGET_TYPE_DEFAULT,
+            // which surprises me:
+            //
+            // https://msdn.microsoft.com/en-us/magazine/ee819134.aspx
+            usage: D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
+
+            minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
+            pixelFormat: D2D1_PIXEL_FORMAT {
+                alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED,
+                format: DXGI_FORMAT_B8G8R8A8_UNORM
+            }
+        };
+        let mut target: *mut ID2D1RenderTarget = null_mut();
+        unsafe {
+            let raw_factory = factory.get_raw();
+            let result = (*raw_factory).CreateDxgiSurfaceRenderTarget(
+                self.surface,
+                &props,
+                &mut target
+            );
+            if result != S_OK {
+                panic!("CreateDxgiSurfaceRenderTarget() returned {}!", result);
+            }
+            // I *think* we're passing ownership of this target to the
+            // DxgiSurfaceRenderTarget, so it will be responsible for
+            // calling Release when it's disposed of.
+            DxgiSurfaceRenderTarget::from_raw(target)
+        }
     }
 }
 
