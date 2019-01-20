@@ -1,5 +1,6 @@
 use std::ptr::null_mut;
 use winapi::ctypes::c_void;
+use winapi::Interface;
 use winapi::um::d3d11::{
     D3D11CreateDevice,
     ID3D11Device,
@@ -27,6 +28,7 @@ use winapi::um::dcommon::{
 use winapi::shared::winerror::S_OK;
 use winapi::um::d2d1::{
     ID2D1RenderTarget,
+    ID2D1GdiInteropRenderTarget,
     D2D1_RENDER_TARGET_PROPERTIES,
     D2D1_RENDER_TARGET_TYPE_DEFAULT,
     D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
@@ -125,7 +127,7 @@ impl Direct3DTexture {
         Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface }
     }
 
-    pub fn create_d2d_render_target(&mut self, factory: &Factory) -> DxgiSurfaceRenderTarget {
+    pub fn create_d2d_render_target(&mut self, factory: &Factory) -> GdiFriendlyRenderTarget {
         let (dpi_x, dpi_y) = factory.get_desktop_dpi();
         let props = D2D1_RENDER_TARGET_PROPERTIES {
             _type: D2D1_RENDER_TARGET_TYPE_DEFAULT,
@@ -156,10 +158,25 @@ impl Direct3DTexture {
             if result != S_OK {
                 panic!("CreateDxgiSurfaceRenderTarget() returned {}!", result);
             }
+
             // I *think* we're passing ownership of this target to the
             // DxgiSurfaceRenderTarget, so it will be responsible for
             // calling Release when it's disposed of.
-            DxgiSurfaceRenderTarget::from_raw(target)
+            let dxgi_target = DxgiSurfaceRenderTarget::from_raw(target);
+
+            let mut gdi_interop_ptr: *mut c_void = null_mut();
+            let gresult = (*target).QueryInterface(
+                &ID2D1GdiInteropRenderTarget::uuidof(),
+                &mut gdi_interop_ptr
+            );
+            if gresult != S_OK {
+                panic!("QueryInterface(ID2D1GdiInteropRenderTarget) returned {}!", gresult);
+            }
+
+            GdiFriendlyRenderTarget {
+                dxgi_target,
+                gdi_interop_target: gdi_interop_ptr as *mut ID2D1GdiInteropRenderTarget
+            }
         }
     }
 }
@@ -169,6 +186,19 @@ impl Drop for Direct3DTexture {
         unsafe {
             (*self.texture).Release();
             (*self.surface).Release();
+        }
+    }
+}
+
+pub struct GdiFriendlyRenderTarget {
+    dxgi_target: DxgiSurfaceRenderTarget,
+    gdi_interop_target: *mut ID2D1GdiInteropRenderTarget,
+}
+
+impl Drop for GdiFriendlyRenderTarget {
+    fn drop(&mut self) {
+        unsafe {
+            (*self.gdi_interop_target).Release();
         }
     }
 }
