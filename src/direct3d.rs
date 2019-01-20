@@ -1,4 +1,5 @@
 use std::ptr::null_mut;
+use winapi::ctypes::c_void;
 use winapi::um::d3d11::{
     D3D11CreateDevice,
     ID3D11Device,
@@ -9,6 +10,10 @@ use winapi::um::d3d11::{
     D3D11_BIND_RENDER_TARGET,
     D3D11_RESOURCE_MISC_GDI_COMPATIBLE,
     D3D11_USAGE_DEFAULT
+};
+use winapi::shared::dxgi::{
+    IDXGISurface,
+    IID_IDXGISurface
 };
 use winapi::shared::dxgitype::DXGI_SAMPLE_DESC;
 use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -61,12 +66,14 @@ impl Drop for Direct3DDevice {
 }
 
 pub struct Direct3DTexture {
-    texture: *mut ID3D11Texture2D
+    texture: *mut ID3D11Texture2D,
+    surface: *mut IDXGISurface
 }
 
 impl Direct3DTexture {
     pub fn new(device: *mut ID3D11Device, width: u32, height: u32) -> Self {
         let mut texture: *mut ID3D11Texture2D = null_mut();
+        let mut surface_ptr: *mut c_void = null_mut();
         let desc = D3D11_TEXTURE2D_DESC {
             ArraySize: 1,
             BindFlags: D3D11_BIND_RENDER_TARGET,
@@ -92,7 +99,17 @@ impl Direct3DTexture {
                 panic!("CreateTexture2D() returned {}!", result);
             }
         };
-        Direct3DTexture { texture }
+        unsafe {
+            let result = (*texture).QueryInterface(
+                &IID_IDXGISurface,
+                &mut surface_ptr
+            );
+            if result != S_OK {
+                panic!("QueryInterface(IDXGISurface) returned {}!", result);
+            }
+        }
+
+        Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface }
     }
 }
 
@@ -100,6 +117,7 @@ impl Drop for Direct3DTexture {
     fn drop(&mut self) {
         unsafe {
             (*self.texture).Release();
+            (*self.surface).Release();
         }
     }
 }
