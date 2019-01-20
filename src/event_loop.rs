@@ -1,5 +1,5 @@
 use std::ptr::null_mut;
-use winapi::um::winuser::{GetMessageA, PostThreadMessageA, WM_QUIT};
+use winapi::um::winuser::{GetMessageA, DispatchMessageA, PostThreadMessageA, WM_QUIT};
 use winapi::um::processthreadsapi::GetCurrentThreadId;
 
 use super::windows_util;
@@ -36,7 +36,7 @@ impl EventLoop {
                 // An error was received.
                 println!("Received error.");
             } else {
-                println!("Got a message {}", msg.message);
+                unsafe { DispatchMessageA(&msg); }
             }
         }
     }

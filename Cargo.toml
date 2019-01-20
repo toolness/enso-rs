@@ -5,4 +5,10 @@ authors = ["Atul Varma <varmaa@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-winapi = { version = "0.3", features = ["winuser", "processthreadsapi"] }
+winapi = { version = "0.3", features = [
+    "winuser",
+    "processthreadsapi",
+    "libloaderapi",
+    "wingdi",
+    "errhandlingapi"
+] }
