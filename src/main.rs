@@ -8,12 +8,11 @@ mod events;
 fn main() {
     use std::thread;
     use std::sync::mpsc::channel;
-    use winapi::um::winuser::{PostThreadMessageA, WM_QUIT};
-    use winapi::um::processthreadsapi::GetCurrentThreadId;
 
     use self::events::Event;
 
-    let main_thread_id = unsafe { GetCurrentThreadId() };
+    let eloop = event_loop::EventLoop::new();
+    let exit_event_loop = eloop.create_exiter();
     let (tx, rx) = channel();
 
     let keyhook = keyboard_hook::KeyboardHook::install(tx);
@@ -25,9 +24,7 @@ fn main() {
                     println!("{:?}", event);
                     match event {
                         Event::QuasimodeEnd => {
-                            if unsafe { PostThreadMessageA(main_thread_id, WM_QUIT, 0, 0) } == 0 {
-                                println!("PostThreadMessageA() failed!");
-                            }
+                            exit_event_loop();
                             break;
                         }
                         _ => {}
@@ -44,8 +41,7 @@ fn main() {
     println!("Installed key hook.");
     println!("Press CAPS LOCK to exit.");
 
-    event_loop::run();
-
+    eloop.run();
     keyhook.uninstall();
 
     println!("Farewell.");
