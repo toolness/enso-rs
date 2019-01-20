@@ -69,6 +69,14 @@ impl TransparentWindow {
             panic!("CreateWindowExA() failed!");
         }
         winuser::SetForegroundWindow(old_fg_window);
+
+        use super::direct3d::Direct3DDevice;
+
+        // TODO: Create a texture and bind Direct2D to it,
+        // as per https://msdn.microsoft.com/en-us/magazine/ee819134.aspx.
+        let d3d = Direct3DDevice::new();
+        println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
+
         window
     }
 

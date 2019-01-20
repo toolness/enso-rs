@@ -6,6 +6,7 @@ mod windows_util;
 mod events;
 mod ui_thread;
 mod transparent_window;
+mod direct3d;
 
 fn main() {
     use std::thread;

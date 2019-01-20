@@ -10,5 +10,7 @@ winapi = { version = "0.3", features = [
     "processthreadsapi",
     "libloaderapi",
     "wingdi",
-    "errhandlingapi"
+    "errhandlingapi",
+    "d3d11",
+    "winerror"
 ] }
