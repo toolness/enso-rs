@@ -3,7 +3,8 @@ use winapi::ctypes::c_void;
 use winapi::Interface;
 use winapi::shared::windef::{
     HWND,
-    HDC
+    HDC,
+    POINT,
 };
 use winapi::um::d3d11::{
     D3D11CreateDevice,
@@ -46,7 +47,8 @@ use winapi::um::wingdi::{
 use winapi::um::winuser::{
     UpdateLayeredWindowIndirect,
     UPDATELAYEREDWINDOWINFO,
-    ULW_ALPHA
+    ULW_ALPHA,
+    SIZE
 };
 use direct2d::factory::Factory;
 use direct2d::render_target::DxgiSurfaceRenderTarget;
@@ -228,15 +230,26 @@ impl GdiFriendlyRenderTarget {
             BlendFlags: 0,
             BlendOp: 0
         };
+        // TODO: A bunch of these points/sizes should not be hard-coded.
+        let ppt_src = POINT {
+            x: 0,
+            y: 0
+        };
+        let ppt_dst = POINT {
+            x: 0,
+            y: 0
+        };
+        let psize = SIZE {
+            cx: 100,
+            cy: 100
+        };
         let mut update_info = UPDATELAYEREDWINDOWINFO {
             cbSize: std::mem::size_of::<UPDATELAYEREDWINDOWINFO>() as u32,
             hdcDst: null_mut(),
-            // TODO: We may actually need to specify values for the size/point stuff,
-            // I'm not sure.
-            pptDst: null_mut(),
-            psize: null_mut(),
+            pptDst: &ppt_dst,
+            psize: &psize,
             hdcSrc: hdc,
-            pptSrc: null_mut(),
+            pptSrc: &ppt_src,
             crKey: 0,
             pblend: &blendfunc,
             dwFlags: ULW_ALPHA,

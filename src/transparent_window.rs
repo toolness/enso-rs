@@ -85,6 +85,7 @@ impl TransparentWindow {
         println!("Created Direct2D render target.");
 
         target.dxgi_target.begin_draw();
+        target.dxgi_target.clear(0xFF_FF_FF);
         target.update_layered_window(window);
         println!("Updated layered window.");
         match target.dxgi_target.end_draw() {
