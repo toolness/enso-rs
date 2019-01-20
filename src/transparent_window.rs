@@ -79,13 +79,27 @@ impl TransparentWindow {
         let mut texture = d3d.create_texture_2d(width, height);
         println!("Created 2D texture.");
         let factory = direct2d::factory::Factory::new().expect("Creating Direct2D factory failed");
-        let target = texture.create_d2d_render_target(&factory);
+        let mut target = texture.create_d2d_render_target(&factory);
         println!("Created Direct2D render target.");
+        // let d2d = d3d.create_d2d_device(&factory);
+        // println!("Created Direct2D device.");
 
-        // TODO: We need to create a Direct2D device, device context, and then
-        // begin drawing before we can update the layered window.
-        // target.update_layered_window(window);
-        // println!("Updated layered window.");
+        use direct2d::render_target::RenderTarget;
+
+//        let mut context = DeviceContext::create(&d2d, true).expect("Creating Direct2D device context failed");
+
+//        context.begin_draw();
+//        match context.end_draw() {
+//            Ok(_) => { println!("Drawing successful.") },
+//            Err(e) => { println!("Error drawing: {:?}", e) }
+//        };
+        target.dxgi_target.begin_draw();
+        target.update_layered_window(window);
+        println!("Updated layered window.");
+        match target.dxgi_target.end_draw() {
+            Ok(_) => { println!("Drawing successful.") },
+            Err(e) => { println!("Error drawing: {:?}", e) }
+        };
         window
     }
 

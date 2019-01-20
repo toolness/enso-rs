@@ -18,7 +18,9 @@ use winapi::um::d3d11::{
 };
 use winapi::shared::dxgi::{
     IDXGISurface,
-    IID_IDXGISurface
+    IDXGIDevice,
+    IID_IDXGISurface,
+    IID_IDXGIDevice
 };
 use winapi::shared::dxgitype::DXGI_SAMPLE_DESC;
 use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -39,6 +41,9 @@ use winapi::um::d2d1::{
     D2D1_FEATURE_LEVEL_DEFAULT,
     D2D1_DC_INITIALIZE_MODE_COPY
 };
+use winapi::um::d2d1_1::{
+    ID2D1Device
+};
 use winapi::um::wingdi::{
     BLENDFUNCTION,
     AC_SRC_ALPHA
@@ -50,14 +55,17 @@ use winapi::um::winuser::{
 };
 use direct2d::factory::Factory;
 use direct2d::render_target::DxgiSurfaceRenderTarget;
+use direct2d::device::Device;
 
 pub struct Direct3DDevice {
     device: *mut ID3D11Device,
+    dxgi_device: *mut IDXGIDevice,
 }
 
 impl Direct3DDevice {
     pub unsafe fn new() -> Self {
         let mut device: *mut ID3D11Device = null_mut();
+        let mut dxgi_device_ptr: *mut c_void = null_mut();
 
         let result = D3D11CreateDevice(
             null_mut(),
@@ -74,7 +82,15 @@ impl Direct3DDevice {
         if result != S_OK {
             panic!("D3D11CreateDevice() returned {}!", result);
         }
-        Direct3DDevice { device }
+
+        let dxgi_result = (*device).QueryInterface(
+            &IID_IDXGIDevice,
+            &mut dxgi_device_ptr
+        );
+        if dxgi_result != S_OK {
+            panic!("QueryInterface(IDXGIDevice) returned {}!", dxgi_result);
+        }
+        Direct3DDevice { device, dxgi_device: dxgi_device_ptr as *mut IDXGIDevice }
     }
 
     pub fn get_feature_level(&self) -> u32 {
@@ -84,11 +100,27 @@ impl Direct3DDevice {
     pub fn create_texture_2d(&mut self, width: u32, height: u32) -> Direct3DTexture {
         Direct3DTexture::new(self.device, width, height)
     }
+
+    pub fn create_d2d_device(&mut self, factory: &Factory) -> Device {
+        unsafe {
+            let mut d2d_device: *mut ID2D1Device = null_mut();
+            let raw_factory = factory.get_raw();
+            let result = (*raw_factory).CreateDevice(
+                self.dxgi_device,
+                &mut d2d_device
+            );
+            if result != S_OK {
+                panic!("CreateDevice() returned {}!", result);
+            }
+            Device::from_raw(d2d_device)
+        }
+    }
 }
 
 impl Drop for Direct3DDevice {
     fn drop(&mut self) {
         unsafe {
+            (*self.dxgi_device).Release();
             (*self.device).Release();
         }
     }
@@ -205,7 +237,7 @@ impl Drop for Direct3DTexture {
 }
 
 pub struct GdiFriendlyRenderTarget {
-    dxgi_target: DxgiSurfaceRenderTarget,
+    pub dxgi_target: DxgiSurfaceRenderTarget,
     gdi_interop_target: *mut ID2D1GdiInteropRenderTarget,
 }
 
