@@ -50,8 +50,13 @@ use winapi::um::winuser::{
     ULW_ALPHA,
     SIZE
 };
+use direct2d::error::Error;
 use direct2d::factory::Factory;
-use direct2d::render_target::DxgiSurfaceRenderTarget;
+use direct2d::render_target::{
+    DxgiSurfaceRenderTarget,
+    RenderTarget,
+    RenderTag
+};
 
 pub struct Direct3DDevice {
     device: *mut ID3D11Device,
@@ -144,7 +149,7 @@ impl Direct3DTexture {
         Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface }
     }
 
-    pub fn create_d2d_render_target(&mut self) -> GdiFriendlyRenderTarget {
+    pub fn create_d2d_layered_window_renderer(&mut self) -> Direct2DLayeredWindowRenderer {
         let factory = Factory::new().expect("Creating Direct2D factory failed");
         let (dpi_x, dpi_y) = factory.get_desktop_dpi();
         let props = D2D1_RENDER_TARGET_PROPERTIES {
@@ -195,7 +200,7 @@ impl Direct3DTexture {
                 panic!("QueryInterface(ID2D1GdiInteropRenderTarget) returned {}!", gresult);
             }
 
-            GdiFriendlyRenderTarget {
+            Direct2DLayeredWindowRenderer {
                 dxgi_target,
                 gdi_interop_target: gdi_interop_ptr as *mut ID2D1GdiInteropRenderTarget
             }
@@ -212,12 +217,24 @@ impl Drop for Direct3DTexture {
     }
 }
 
-pub struct GdiFriendlyRenderTarget {
-    pub dxgi_target: DxgiSurfaceRenderTarget,
+pub struct Direct2DLayeredWindowRenderer {
+    dxgi_target: DxgiSurfaceRenderTarget,
     gdi_interop_target: *mut ID2D1GdiInteropRenderTarget,
 }
 
-impl GdiFriendlyRenderTarget {
+impl Direct2DLayeredWindowRenderer {
+    pub fn draw_and_update_layered_window<F>(
+        &mut self,
+        hwnd: HWND,
+        cb: F
+    ) -> Result<(), (Error, Option<RenderTag>)>
+    where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
+        self.dxgi_target.begin_draw();
+        cb(&mut self.dxgi_target);
+        self.update_layered_window(hwnd);
+        self.dxgi_target.end_draw()
+    }
+
     pub fn update_layered_window(&self, hwnd: HWND) {
         let mut hdc: HDC = null_mut();
         unsafe {
@@ -272,7 +289,7 @@ impl GdiFriendlyRenderTarget {
     }
 }
 
-impl Drop for GdiFriendlyRenderTarget {
+impl Drop for Direct2DLayeredWindowRenderer {
     fn drop(&mut self) {
         unsafe {
             (*self.gdi_interop_target).Release();

@@ -5,6 +5,9 @@ use winapi::um::{winuser, wingdi};
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::shared::{minwindef, windef};
+use direct2d::render_target::RenderTarget;
+
+use super::directx::Direct3DDevice;
 
 static mut WINDOW_CLASS: minwindef::ATOM = 0;
 static INIT_WINDOW_CLASS: Once = Once::new();
@@ -70,9 +73,6 @@ impl TransparentWindow {
         }
         winuser::SetForegroundWindow(old_fg_window);
 
-        use super::directx::Direct3DDevice;
-        use direct2d::render_target::RenderTarget;
-
         // Create a texture and bind Direct2D to it,
         // as per https://msdn.microsoft.com/en-us/magazine/ee819134.aspx.
 
@@ -80,17 +80,16 @@ impl TransparentWindow {
         println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
         let mut texture = d3d.create_texture_2d(width, height);
         println!("Created 2D texture.");
-        let mut target = texture.create_d2d_render_target();
+        let mut renderer = texture.create_d2d_layered_window_renderer();
         println!("Created Direct2D render target.");
 
-        target.dxgi_target.begin_draw();
-        target.dxgi_target.clear(0xFF_FF_FF);
-        target.update_layered_window(window);
-        println!("Updated layered window.");
-        match target.dxgi_target.end_draw() {
+        match renderer.draw_and_update_layered_window(window, |target| {
+            target.clear(0xFF_FF_FF);
+        }) {
             Ok(_) => { println!("Drawing successful.") },
             Err(e) => { println!("Error drawing: {:?}", e) }
         };
+        println!("Updated layered window.");
         window
     }
 
