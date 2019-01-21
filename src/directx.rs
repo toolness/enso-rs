@@ -50,7 +50,6 @@ use winapi::um::winuser::{
     ULW_ALPHA,
     SIZE
 };
-use direct2d::error::Error;
 use direct2d::factory::Factory;
 use direct2d::render_target::{
     DxgiSurfaceRenderTarget,
@@ -58,12 +57,14 @@ use direct2d::render_target::{
     RenderTag
 };
 
+use super::error::Error;
+
 pub struct Direct3DDevice {
     device: *mut ID3D11Device,
 }
 
 impl Direct3DDevice {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, Error> {
         let mut device: *mut ID3D11Device = null_mut();
 
         unsafe {
@@ -80,11 +81,11 @@ impl Direct3DDevice {
                 null_mut()   // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
             );
             if result != S_OK {
-                panic!("D3D11CreateDevice() returned {}!", result);
+                return Err(Error::WindowsCOM(result));
             }
         }
 
-        Direct3DDevice { device }
+        Ok(Direct3DDevice { device })
     }
 
     pub fn get_feature_level(&self) -> u32 {
@@ -237,7 +238,7 @@ impl Direct2DLayeredWindowRenderer {
         &mut self,
         update_options: &LayeredWindowUpdateOptions,
         cb: F
-    ) -> Result<(), (Error, Option<RenderTag>)>
+    ) -> Result<(), (direct2d::error::Error, Option<RenderTag>)>
     where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
         self.dxgi_target.begin_draw();
         cb(&mut self.dxgi_target);
