@@ -217,6 +217,14 @@ impl Drop for Direct3DTexture {
     }
 }
 
+pub struct LayeredWindowUpdateOptions {
+    pub hwnd: HWND,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32
+}
+
 pub struct Direct2DLayeredWindowRenderer {
     dxgi_target: DxgiSurfaceRenderTarget,
     gdi_interop_target: *mut ID2D1GdiInteropRenderTarget,
@@ -225,17 +233,17 @@ pub struct Direct2DLayeredWindowRenderer {
 impl Direct2DLayeredWindowRenderer {
     pub fn draw_and_update_layered_window<F>(
         &mut self,
-        hwnd: HWND,
+        update_options: &LayeredWindowUpdateOptions,
         cb: F
     ) -> Result<(), (Error, Option<RenderTag>)>
     where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
         self.dxgi_target.begin_draw();
         cb(&mut self.dxgi_target);
-        self.update_layered_window(hwnd);
+        self.update_layered_window(update_options);
         self.dxgi_target.end_draw()
     }
 
-    pub fn update_layered_window(&self, hwnd: HWND) {
+    pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) {
         let mut hdc: HDC = null_mut();
         unsafe {
             let result = (*self.gdi_interop_target).GetDC(
@@ -252,18 +260,17 @@ impl Direct2DLayeredWindowRenderer {
             BlendFlags: 0,
             BlendOp: 0
         };
-        // TODO: A bunch of these points/sizes should not be hard-coded.
         let ppt_src = POINT {
             x: 0,
             y: 0
         };
         let ppt_dst = POINT {
-            x: 0,
-            y: 0
+            x: update_options.x,
+            y: update_options.y
         };
         let psize = SIZE {
-            cx: 100,
-            cy: 100
+            cx: update_options.width as i32,
+            cy: update_options.height as i32
         };
         let mut update_info = UPDATELAYEREDWINDOWINFO {
             cbSize: std::mem::size_of::<UPDATELAYEREDWINDOWINFO>() as u32,
@@ -278,7 +285,7 @@ impl Direct2DLayeredWindowRenderer {
             prcDirty: null_mut()
         };
         unsafe {
-            if UpdateLayeredWindowIndirect(hwnd, &mut update_info) == 0 {
+            if UpdateLayeredWindowIndirect(update_options.hwnd, &mut update_info) == 0 {
                 panic!("UpdateLayeredWindowIndirect() failed!");
             }
             let result = (*self.gdi_interop_target).ReleaseDC(null_mut());

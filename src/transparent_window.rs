@@ -9,7 +9,8 @@ use direct2d::render_target::DxgiSurfaceRenderTarget;
 
 use super::directx::{
     Direct3DDevice,
-    Direct2DLayeredWindowRenderer
+    Direct2DLayeredWindowRenderer,
+    LayeredWindowUpdateOptions
 };
 
 static mut WINDOW_CLASS: minwindef::ATOM = 0;
@@ -17,6 +18,8 @@ static INIT_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &'static [u8] = b"EnsoTransparentWindow\0";
 
 pub struct TransparentWindow {
+    width: u32,
+    height: u32,
     hwnd: windef::HWND,
     renderer: Direct2DLayeredWindowRenderer
 }
@@ -89,12 +92,19 @@ impl TransparentWindow {
         let mut texture = d3d.create_texture_2d(width, height);
         let renderer = texture.create_d2d_layered_window_renderer();
 
-        TransparentWindow { hwnd, renderer }
+        TransparentWindow { width, height, hwnd, renderer }
     }
 
     pub fn draw_and_update<F>(&mut self, cb: F) where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
+        let update_info = LayeredWindowUpdateOptions {
+            hwnd: self.hwnd,
+            x: 0,
+            y: 0,
+            width: self.width,
+            height: self.height
+        };
         match self.renderer.draw_and_update_layered_window(
-            self.hwnd,
+            &update_info,
             cb
         ) {
             Ok(_) => { println!("Drawing successful.") },
