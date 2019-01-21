@@ -70,7 +70,7 @@ impl TransparentWindow {
         }
         winuser::SetForegroundWindow(old_fg_window);
 
-        use super::direct3d::Direct3DDevice;
+        use super::directx::Direct3DDevice;
         use direct2d::render_target::RenderTarget;
 
         // Create a texture and bind Direct2D to it,
