@@ -5,16 +5,20 @@ use winapi::um::{winuser, wingdi};
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::shared::{minwindef, windef};
-use direct2d::render_target::RenderTarget;
+use direct2d::render_target::DxgiSurfaceRenderTarget;
 
-use super::directx::Direct3DDevice;
+use super::directx::{
+    Direct3DDevice,
+    Direct2DLayeredWindowRenderer
+};
 
 static mut WINDOW_CLASS: minwindef::ATOM = 0;
 static INIT_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &'static [u8] = b"EnsoTransparentWindow\0";
 
 pub struct TransparentWindow {
-    hwnd: windef::HWND
+    hwnd: windef::HWND,
+    renderer: Direct2DLayeredWindowRenderer
 }
 
 impl TransparentWindow {
@@ -73,30 +77,29 @@ impl TransparentWindow {
         }
         winuser::SetForegroundWindow(old_fg_window);
 
-        // Create a texture and bind Direct2D to it,
-        // as per https://msdn.microsoft.com/en-us/magazine/ee819134.aspx.
-
-        let mut d3d = Direct3DDevice::new();
-        println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
-        let mut texture = d3d.create_texture_2d(width, height);
-        println!("Created 2D texture.");
-        let mut renderer = texture.create_d2d_layered_window_renderer();
-        println!("Created Direct2D render target.");
-
-        match renderer.draw_and_update_layered_window(window, |target| {
-            target.clear(0xFF_FF_FF);
-        }) {
-            Ok(_) => { println!("Drawing successful.") },
-            Err(e) => { println!("Error drawing: {:?}", e) }
-        };
-        println!("Updated layered window.");
         window
     }
 
     pub fn new(width: u32, height: u32) -> Self {
-        TransparentWindow {
-            hwnd: unsafe { Self::create_window(width, height) }
-        }
+        let hwnd = unsafe { Self::create_window(width, height) };
+
+        let mut d3d = unsafe { Direct3DDevice::new() };
+        println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
+
+        let mut texture = d3d.create_texture_2d(width, height);
+        let renderer = texture.create_d2d_layered_window_renderer();
+
+        TransparentWindow { hwnd, renderer }
+    }
+
+    pub fn draw_and_update<F>(&mut self, cb: F) where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
+        match self.renderer.draw_and_update_layered_window(
+            self.hwnd,
+            cb
+        ) {
+            Ok(_) => { println!("Drawing successful.") },
+            Err(e) => { println!("Error drawing: {:?}", e) }
+        };
     }
 
     pub fn close(self) {

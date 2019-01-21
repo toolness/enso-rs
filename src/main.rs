@@ -11,10 +11,14 @@ mod directx;
 fn main() {
     use std::thread;
     use std::sync::mpsc::channel;
+    use direct2d::render_target::RenderTarget;
 
     let eloop = event_loop::EventLoop::new();
     let exit_event_loop = eloop.create_exiter();
-    let window = transparent_window::TransparentWindow::new(100, 100);
+    let mut window = transparent_window::TransparentWindow::new(100, 100);
+    window.draw_and_update(|target| {
+        target.clear(0xFF_FF_FF);
+    });
     let (tx, rx) = channel();
 
     let keyhook = keyboard_hook::KeyboardHook::install(tx);
