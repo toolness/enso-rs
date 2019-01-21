@@ -35,7 +35,7 @@ thread_local! {
 }
 
 pub struct KeyboardHook {
-    join_handle: RefCell<Option<thread::JoinHandle<()>>>,
+    join_handle: Option<thread::JoinHandle<()>>,
     thread_id: u32,
 }
 
@@ -88,9 +88,9 @@ impl KeyboardHook {
 
     pub fn install(sender: Sender<Event>) -> Self {
         let (tx, rx) = channel();
-        let join_handle = RefCell::new(Some(thread::spawn(move|| {
+        let join_handle = Some(thread::spawn(move|| {
             Self::install_in_thread(tx, sender);
-        })));
+        }));
         let thread_id = rx.recv().unwrap();
         KeyboardHook { join_handle, thread_id }
     }
@@ -108,10 +108,9 @@ impl Drop for KeyboardHook {
             println!("PostThreadMessageA() failed!");
         }
 
-        match self.join_handle.replace(None) {
-            None => panic!("Expected join_handle to contain a handle!"),
-            Some(handle) => { handle.join().unwrap(); }
-        };
+        let mut handle = None;
+        std::mem::swap(&mut handle, &mut self.join_handle);
+        handle.expect("join_handle should contain a handle!").join().unwrap();
     }
 }
 
