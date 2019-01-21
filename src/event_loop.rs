@@ -1,11 +1,19 @@
 use std::ptr::null_mut;
-use winapi::um::winuser::{GetMessageA, DispatchMessageA, PostThreadMessageA, WM_QUIT};
+use winapi::um::winuser::{GetMessageA, DispatchMessageA, PostThreadMessageA, WM_USER, WM_TIMER};
 use winapi::um::processthreadsapi::GetCurrentThreadId;
 
 use super::windows_util;
 
+const WM_USER_KICK_EVENT_LOOP: u32 = WM_USER + 1;
+
 pub struct EventLoop {
     thread_id: u32,
+}
+
+pub fn kick_event_loop(thread_id: u32) {
+    if unsafe { PostThreadMessageA(thread_id, WM_USER_KICK_EVENT_LOOP, 0, 0) } == 0 {
+        println!("PostThreadMessageA() failed to kick event loop!");
+    }
 }
 
 impl EventLoop {
@@ -14,16 +22,11 @@ impl EventLoop {
         EventLoop { thread_id }
     }
 
-    pub fn create_exiter(&self) -> impl FnOnce() -> () {
-        let thread_id = self.thread_id;
-        move|| {
-            if unsafe { PostThreadMessageA(thread_id, WM_QUIT, 0, 0) } == 0 {
-                println!("PostThreadMessageA() failed!");
-            }
-        }
+    pub fn get_thread_id(&self) -> u32 {
+        self.thread_id
     }
 
-    pub fn run(&self) {
+    pub fn run<F>(&self, mut loop_cb: F) where F: FnMut() -> bool {
         let mut msg = windows_util::create_blank_msg();
 
         loop {
@@ -36,8 +39,24 @@ impl EventLoop {
                 // An error was received.
                 println!("Received error.");
             } else {
+                if msg.hwnd == null_mut() {
+                    match msg.message {
+                        WM_USER_KICK_EVENT_LOOP => {
+                            // Do nothing.
+                        },
+                        WM_TIMER => {
+                            // Do nothing. It seems like DirectX or the GDI
+                            // or something sends these as a result of our
+                            // layered window code, and I'm not sure why.
+                        },
+                        _ => {
+                            println!("Unknown thread message: 0x{:x}", msg.message);
+                        }
+                    }
+                }
                 unsafe { DispatchMessageA(&msg); }
             }
+            if loop_cb() { break; }
         }
     }
 }

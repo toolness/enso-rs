@@ -24,9 +24,11 @@ use winapi::shared::ntdef::NULL;
 
 use super::events::{Event};
 use super::windows_util;
+use super::event_loop::kick_event_loop;
 
 struct HookState {
     sender: Sender<Event>,
+    receiver_thread_id: u32,
     in_quasimode: bool
 }
 
@@ -40,7 +42,7 @@ pub struct KeyboardHook {
 }
 
 impl KeyboardHook {
-    fn install_in_thread(init_sender: Sender<u32>, sender: Sender<Event>) {
+    fn install_in_thread(init_sender: Sender<u32>, sender: Sender<Event>, receiver_thread_id: u32) {
         let hook_id = unsafe {
             SetWindowsHookExA(WH_KEYBOARD_LL, Some(hook_callback), null_mut(), 0)
         };
@@ -50,6 +52,7 @@ impl KeyboardHook {
         HOOK_STATE.with(|s| {
             *s.borrow_mut() = Some(HookState {
                 sender,
+                receiver_thread_id,
                 in_quasimode: false
             });
         });
@@ -86,13 +89,13 @@ impl KeyboardHook {
         });
     }
 
-    pub fn install(sender: Sender<Event>) -> Self {
+    pub fn install(sender: Sender<Event>, receiver_thread_id: u32) -> Self {
         let (tx, rx) = channel();
         let builder = thread::Builder::new()
             .name("Keyboard hook".into())
             .stack_size(32 * 1024);
         let join_handle = Some(builder.spawn(move|| {
-            Self::install_in_thread(tx, sender);
+            Self::install_in_thread(tx, sender, receiver_thread_id);
         }).unwrap());
         let thread_id = rx.recv().unwrap();
         KeyboardHook { join_handle, thread_id }
@@ -167,7 +170,10 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
                     None => force_eat_key,
                     Some(event) => {
                         match state.sender.send(event) {
-                            Ok(()) => true,
+                            Ok(()) => {
+                                kick_event_loop(state.receiver_thread_id);
+                                true
+                            },
                             Err(e) => {
                                 println!("Error sending event: {:?}", e);
                                 false

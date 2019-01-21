@@ -1,5 +1,5 @@
-use std::sync::mpsc::Receiver;
 use winapi::um::winuser::VK_BACK;
+use std::sync::mpsc::{Receiver, TryRecvError};
 
 use super::events::Event;
 use super::windows_util::vkey_to_char;
@@ -11,6 +11,21 @@ pub struct UserInterface {
 impl UserInterface {
     pub fn new() -> Self {
         UserInterface { cmd: String::new() }
+    }
+
+    pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> bool {
+        match receiver.try_recv() {
+            Ok(event) => {
+                self.process_event(event)
+            },
+            Err(TryRecvError::Empty) => {
+                false
+            },
+            Err(TryRecvError::Disconnected) => {
+                println!("Event send channel was disconnected!");
+                true
+            }
+        }
     }
 
     pub fn process_event(&mut self, event: Event) -> bool {
@@ -47,20 +62,5 @@ impl UserInterface {
             },
         };
         return false;
-    }
-}
-
-pub fn run(receiver: Receiver<Event>) {
-    let mut ui = UserInterface::new();
-    loop {
-        match receiver.recv() {
-            Ok(event) => {
-                if ui.process_event(event) { break };
-            },
-            Err(e) => {
-                println!("Receive error {:?}", e);
-                break;
-            }
-        }
     }
 }
