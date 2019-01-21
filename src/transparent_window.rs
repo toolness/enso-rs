@@ -18,6 +18,8 @@ static INIT_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &'static [u8] = b"EnsoTransparentWindow\0";
 
 pub struct TransparentWindow {
+    x: i32,
+    y: i32,
     width: u32,
     height: u32,
     hwnd: windef::HWND,
@@ -52,7 +54,7 @@ impl TransparentWindow {
         WINDOW_CLASS
     }
 
-    unsafe fn create_window(width: u32, height: u32) -> windef::HWND {
+    unsafe fn create_window(x: i32, y: i32, width: u32, height: u32) -> windef::HWND {
         Self::create_window_class();
         let old_fg_window = winuser::GetForegroundWindow();
         let ex_style = winuser::WS_EX_LAYERED |
@@ -65,8 +67,8 @@ impl TransparentWindow {
             window_class_name_ptr(),        /* lpClassName  */
             null_mut(),                     /* lpWindowName */
             window_style,                   /* dwStyle      */
-            0,                              /* x            */
-            0,                              /* y            */
+            x,                              /* x            */
+            y,                              /* y            */
             width as i32,                   /* nWidth       */
             height as i32,                  /* nHeight      */
             null_mut(),                     /* hWndParent   */
@@ -83,8 +85,8 @@ impl TransparentWindow {
         window
     }
 
-    pub fn new(width: u32, height: u32) -> Self {
-        let hwnd = unsafe { Self::create_window(width, height) };
+    pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
+        let hwnd = unsafe { Self::create_window(x, y, width, height) };
 
         let mut d3d = unsafe { Direct3DDevice::new() };
         println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
@@ -92,14 +94,14 @@ impl TransparentWindow {
         let mut texture = d3d.create_texture_2d(width, height);
         let renderer = texture.create_d2d_layered_window_renderer();
 
-        TransparentWindow { width, height, hwnd, renderer }
+        TransparentWindow { x, y, width, height, hwnd, renderer }
     }
 
     pub fn draw_and_update<F>(&mut self, cb: F) where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
         let update_info = LayeredWindowUpdateOptions {
             hwnd: self.hwnd,
-            x: 0,
-            y: 0,
+            x: self.x,
+            y: self.y,
             width: self.width,
             height: self.height
         };

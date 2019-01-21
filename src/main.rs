@@ -15,7 +15,7 @@ fn main() {
 
     let eloop = event_loop::EventLoop::new();
     let exit_event_loop = eloop.create_exiter();
-    let mut window = transparent_window::TransparentWindow::new(100, 100);
+    let mut window = transparent_window::TransparentWindow::new(20, 20, 100, 100);
     window.draw_and_update(|target| {
         target.clear(0xFF_FF_FF);
     });
