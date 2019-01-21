@@ -32,6 +32,58 @@ struct HookState {
     in_quasimode: bool
 }
 
+impl HookState {
+    fn process_key(&mut self, wm_type: u32, vk_code: i32) -> bool {
+        let is_quasimode_key = vk_code == VK_CAPITAL;
+
+        // Note that WM_SYSKEYUP and WM_SYSKEYDOWN can be set
+        // if the alt key is down, even if it's down in combination
+        // with other keys.
+        let is_key_up = wm_type == WM_KEYUP || wm_type == WM_SYSKEYUP;
+        let is_key_down = wm_type == WM_KEYDOWN || wm_type == WM_SYSKEYDOWN;
+        let mut force_eat_key = false;
+
+        let possible_event: Option<Event> = if self.in_quasimode {
+            if is_quasimode_key {
+                if is_key_up {
+                    self.in_quasimode = false;
+                    Some(Event::QuasimodeEnd)
+                } else {
+                    // This is likely the quasimode key being auto-repeated.
+                    force_eat_key = true;
+                    None
+                }
+            } else if is_key_down {
+                Some(Event::Keypress(vk_code))
+            } else {
+                None
+            }
+        } else {
+            if is_quasimode_key && is_key_down {
+                self.in_quasimode = true;
+                Some(Event::QuasimodeStart)
+            } else {
+                None
+            }
+        };
+        match possible_event {
+            None => force_eat_key,
+            Some(event) => {
+                match self.sender.send(event) {
+                    Ok(()) => {
+                        kick_event_loop(self.receiver_thread_id);
+                        true
+                    },
+                    Err(e) => {
+                        println!("Error sending event: {:?}", e);
+                        false
+                    }
+                }
+            }
+        }
+    }
+}
+
 thread_local! {
     static HOOK_STATE: RefCell<Option<HookState>> = RefCell::new(None);
 }
@@ -127,61 +179,13 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
     } else {
         let info = l_param as *const KBDLLHOOKSTRUCT;
         let vk_code = (*info).vkCode as i32;
+        let wm_type = w_param as u32;
         let eat_key: bool = HOOK_STATE.with(|s| match *s.borrow_mut() {
             None => {
                 println!("Expected hook state to exist!");
                 false
             },
-            Some(ref mut state) => {
-                let is_quasimode_key = vk_code == VK_CAPITAL;
-                let wm_type = w_param as u32;
-
-                // Note that WM_SYSKEYUP and WM_SYSKEYDOWN can be set
-                // if the alt key is down, even if it's down in combination
-                // with other keys.
-                let is_key_up = wm_type == WM_KEYUP || wm_type == WM_SYSKEYUP;
-                let is_key_down = wm_type == WM_KEYDOWN || wm_type == WM_SYSKEYDOWN;
-                let mut force_eat_key = false;
-
-                let possible_event: Option<Event> = if state.in_quasimode {
-                    if is_quasimode_key {
-                        if is_key_up {
-                            state.in_quasimode = false;
-                            Some(Event::QuasimodeEnd)
-                        } else {
-                            // This is likely the quasimode key being auto-repeated.
-                            force_eat_key = true;
-                            None
-                        }
-                    } else if is_key_down {
-                        Some(Event::Keypress(vk_code))
-                    } else {
-                        None
-                    }
-                } else {
-                    if is_quasimode_key && is_key_down {
-                        state.in_quasimode = true;
-                        Some(Event::QuasimodeStart)
-                    } else {
-                        None
-                    }
-                };
-                match possible_event {
-                    None => force_eat_key,
-                    Some(event) => {
-                        match state.sender.send(event) {
-                            Ok(()) => {
-                                kick_event_loop(state.receiver_thread_id);
-                                true
-                            },
-                            Err(e) => {
-                                println!("Error sending event: {:?}", e);
-                                false
-                            }
-                        }
-                    }
-                }
-            }
+            Some(ref mut state) => state.process_key(wm_type, vk_code)
         });
         if eat_key {
             // We processed the keystroke, so don't pass it on to the underlying application.
