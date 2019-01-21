@@ -1,6 +1,10 @@
 use std::ptr::null_mut;
 use std::cell::RefCell;
 use std::sync::mpsc::Sender;
+use std::thread;
+use std::sync::mpsc::channel;
+use winapi::um::winuser::{GetMessageA, PostThreadMessageA, WM_QUIT};
+use winapi::um::processthreadsapi::GetCurrentThreadId;
 
 use winapi::um::winuser::{
     SetWindowsHookExA,
@@ -19,10 +23,11 @@ use winapi::shared::windef::HHOOK;
 use winapi::shared::ntdef::NULL;
 
 use super::events::{Event};
+use super::windows_util;
 
 struct HookState {
     sender: Sender<Event>,
-    in_quasimode: bool,
+    in_quasimode: bool
 }
 
 thread_local! {
@@ -30,27 +35,64 @@ thread_local! {
 }
 
 pub struct KeyboardHook {
-    hook_id: HHOOK,
+    join_handle: RefCell<Option<thread::JoinHandle<()>>>,
+    thread_id: u32,
 }
 
 impl KeyboardHook {
-    pub fn install(sender: Sender<Event>) -> Self {
-        HOOK_STATE.with(|s| {
-            if s.borrow().is_some() {
-                panic!("Only one KeyboardHook can be active at once!");
-            }
-            *s.borrow_mut() = Some(HookState {
-                sender,
-                in_quasimode: false
-            });
-        });
+    fn install_in_thread(init_sender: Sender<u32>, sender: Sender<Event>) {
         let hook_id = unsafe {
             SetWindowsHookExA(WH_KEYBOARD_LL, Some(hook_callback), null_mut(), 0)
         };
         if hook_id == NULL as HHOOK {
             panic!("SetWindowsHookExA() failed!");
         }
-        KeyboardHook { hook_id }
+        HOOK_STATE.with(|s| {
+            *s.borrow_mut() = Some(HookState {
+                sender,
+                in_quasimode: false
+            });
+        });
+        init_sender.send(unsafe { GetCurrentThreadId() }).unwrap();
+        Self::run_event_loop(hook_id);
+    }
+
+    fn run_event_loop(hook_id: HHOOK) {
+        let mut msg = windows_util::create_blank_msg();
+
+        loop {
+            let result = unsafe { GetMessageA(&mut msg, null_mut(), 0, 0) };
+            if result == 0 {
+                // WM_QUIT was received.
+                println!("Keyboard hook thread received WM_QUIT.");
+                break;
+            } else if result == -1 {
+                // An error was received.
+                println!("Keyboard hook thread received error.");
+                break;
+            } else {
+                println!("Unexpected message in keyboard hook!");
+            }
+        }
+
+        if unsafe { UnhookWindowsHookEx(hook_id) } == 0 {
+            panic!("UnhookWindowsHookEx failed!");
+        }
+        HOOK_STATE.with(|s| {
+            if s.borrow().is_none() {
+                panic!("Assertion failure, expected hook state to exist!");
+            }
+            *s.borrow_mut() = None;
+        });
+    }
+
+    pub fn install(sender: Sender<Event>) -> Self {
+        let (tx, rx) = channel();
+        let join_handle = RefCell::new(Some(thread::spawn(move|| {
+            Self::install_in_thread(tx, sender);
+        })));
+        let thread_id = rx.recv().unwrap();
+        KeyboardHook { join_handle, thread_id }
     }
 
     pub fn uninstall(self) {
@@ -61,15 +103,15 @@ impl KeyboardHook {
 impl Drop for KeyboardHook {
     fn drop(&mut self) {
         println!("Uninstalling keyhook.");
-        if unsafe { UnhookWindowsHookEx(self.hook_id) } == 0 {
-            panic!("UnhookWindowsHookEx failed!");
+
+        if unsafe { PostThreadMessageA(self.thread_id, WM_QUIT, 0, 0) } == 0 {
+            println!("PostThreadMessageA() failed!");
         }
-        HOOK_STATE.with(|s| {
-            if s.borrow().is_none() {
-                panic!("Assertion failure, expected hook state to exist!");
-            }
-            *s.borrow_mut() = None;
-        });
+
+        match self.join_handle.replace(None) {
+            None => panic!("Expected join_handle to contain a handle!"),
+            Some(handle) => { handle.join().unwrap(); }
+        };
     }
 }
 
