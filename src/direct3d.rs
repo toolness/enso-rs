@@ -156,6 +156,10 @@ impl Direct3DTexture {
             // which surprises me:
             //
             // https://msdn.microsoft.com/en-us/magazine/ee819134.aspx
+            //
+            // (Actually, the software rendering part of the article recommends
+            // this flag while the hardware rendering part does not, and I suspect
+            // the latter was a typo.)
             usage: D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
 
             minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
