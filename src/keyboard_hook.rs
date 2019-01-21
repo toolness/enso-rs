@@ -88,9 +88,12 @@ impl KeyboardHook {
 
     pub fn install(sender: Sender<Event>) -> Self {
         let (tx, rx) = channel();
-        let join_handle = Some(thread::spawn(move|| {
+        let builder = thread::Builder::new()
+            .name("Keyboard hook".into())
+            .stack_size(32 * 1024);
+        let join_handle = Some(builder.spawn(move|| {
             Self::install_in_thread(tx, sender);
-        }));
+        }).unwrap());
         let thread_id = rx.recv().unwrap();
         KeyboardHook { join_handle, thread_id }
     }
