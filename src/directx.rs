@@ -63,23 +63,25 @@ pub struct Direct3DDevice {
 }
 
 impl Direct3DDevice {
-    pub unsafe fn new() -> Self {
+    pub fn new() -> Self {
         let mut device: *mut ID3D11Device = null_mut();
 
-        let result = D3D11CreateDevice(
-            null_mut(),
-            D3D_DRIVER_TYPE_HARDWARE,
-            null_mut(),
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-            null_mut(),
-            0,
-            D3D11_SDK_VERSION,
-            &mut device,
-            null_mut(),
-            null_mut()   // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
-        );
-        if result != S_OK {
-            panic!("D3D11CreateDevice() returned {}!", result);
+        unsafe {
+            let result = D3D11CreateDevice(
+                null_mut(),
+                D3D_DRIVER_TYPE_HARDWARE,
+                null_mut(),
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                null_mut(),
+                0,
+                D3D11_SDK_VERSION,
+                &mut device,
+                null_mut(),
+                null_mut()   // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
+            );
+            if result != S_OK {
+                panic!("D3D11CreateDevice() returned {}!", result);
+            }
         }
 
         Direct3DDevice { device }

@@ -5,15 +5,17 @@ use direct2d::render_target::RenderTarget;
 use super::events::Event;
 use super::windows_util::vkey_to_char;
 use super::transparent_window::TransparentWindow;
+use super::directx::Direct3DDevice;
 
 pub struct UserInterface {
     cmd: String,
+    d3d_device: Direct3DDevice,
     window: Option<TransparentWindow>
 }
 
 impl UserInterface {
-    pub fn new() -> Self {
-        UserInterface { cmd: String::new(), window: None }
+    pub fn new(d3d_device: Direct3DDevice) -> Self {
+        UserInterface { cmd: String::new(), d3d_device, window: None }
     }
 
     pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> bool {
@@ -36,7 +38,7 @@ impl UserInterface {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.cmd.clear();
-                let mut window = TransparentWindow::new(20, 20, 100, 100);
+                let mut window = TransparentWindow::new(&mut self.d3d_device, 20, 20, 100, 100);
                 window.draw_and_update(|target| {
                     target.clear(0xFF_FF_FF);
                 });

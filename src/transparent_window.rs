@@ -85,13 +85,10 @@ impl TransparentWindow {
         window
     }
 
-    pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
+    pub fn new(d3d_device: &mut Direct3DDevice, x: i32, y: i32, width: u32, height: u32) -> Self {
         let hwnd = unsafe { Self::create_window(x, y, width, height) };
 
-        let mut d3d = unsafe { Direct3DDevice::new() };
-        println!("Created Direct3D device with feature level 0x{:x}.", d3d.get_feature_level());
-
-        let mut texture = d3d.create_texture_2d(width, height);
+        let mut texture = d3d_device.create_texture_2d(width, height);
         let renderer = texture.create_d2d_layered_window_renderer();
 
         TransparentWindow { x, y, width, height, hwnd, renderer }
