@@ -110,10 +110,6 @@ impl TransparentWindow {
             Err(e) => { println!("Error drawing: {:?}", e) }
         };
     }
-
-    pub fn close(self) {
-        // Do nothing, our drop implementation will trigger cleanup.
-    }
 }
 
 impl Drop for TransparentWindow {
