@@ -144,7 +144,8 @@ impl Direct3DTexture {
         Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface }
     }
 
-    pub fn create_d2d_render_target(&mut self, factory: &Factory) -> GdiFriendlyRenderTarget {
+    pub fn create_d2d_render_target(&mut self) -> GdiFriendlyRenderTarget {
+        let factory = Factory::new().expect("Creating Direct2D factory failed");
         let (dpi_x, dpi_y) = factory.get_desktop_dpi();
         let props = D2D1_RENDER_TARGET_PROPERTIES {
             _type: D2D1_RENDER_TARGET_TYPE_DEFAULT,
