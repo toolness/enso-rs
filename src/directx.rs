@@ -241,7 +241,7 @@ impl Direct2DLayeredWindowRenderer {
     where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
         self.dxgi_target.begin_draw();
         cb(&mut self.dxgi_target);
-        self.update_layered_window(update_options);
+        self.update_layered_window(update_options)?;
         match self.dxgi_target.end_draw() {
             Ok(()) => Ok(()),
             Err((err, opt_tag)) => {
@@ -253,7 +253,7 @@ impl Direct2DLayeredWindowRenderer {
         }
     }
 
-    pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) {
+    pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) -> Result<(), Error> {
         let mut hdc: HDC = null_mut();
         unsafe {
             let result = (*self.gdi_interop_target).GetDC(
@@ -261,7 +261,8 @@ impl Direct2DLayeredWindowRenderer {
                 &mut hdc
             );
             if result != S_OK {
-                panic!("GetDC() returned {:x}!", result);
+                eprintln!("GetDC() failed!");
+                return Err(Error::WindowsCOM(result));
             }
         }
         let blendfunc = BLENDFUNCTION {
@@ -296,13 +297,16 @@ impl Direct2DLayeredWindowRenderer {
         };
         unsafe {
             if UpdateLayeredWindowIndirect(update_options.hwnd, &mut update_info) == 0 {
-                panic!("UpdateLayeredWindowIndirect() failed!");
+                eprintln!("UpdateLayeredWindowIndirect() failed!");
+                return Err(Error::from_winapi());
             }
             let result = (*self.gdi_interop_target).ReleaseDC(null_mut());
             if result != S_OK {
-                panic!("ReleaseDC() returned {}!", result);
+                eprintln!("ReleaseDC() failed!");
+                return Err(Error::WindowsCOM(result));
             }
         }
+        Ok(())
     }
 }
 
