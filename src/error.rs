@@ -41,18 +41,22 @@ impl Error {
         let s = std::str::from_utf8(&buf[0..strlen])?;
         Ok(s.into())
     }
+
+    fn include_winapi_error_desc(out: &mut fmt::DebugTuple<'_, '_>, dword: DWORD) {
+        if let Ok(desc) = Self::get_winapi_error_desc(dword) {
+            out.field(&desc);
+        }
+    }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut debug_tuple = fmt.debug_tuple("Error");
-        let mut out = debug_tuple.field(&self);
+        let mut out = fmt.debug_tuple("Error");
+        out.field(&self);
         match self {
-            Error::WindowsAPI(dword) => {
-                if let Ok(desc) = Self::get_winapi_error_desc(*dword) {
-                    out = out.field(&desc);
-                }
-            },
+            Error::WindowsAPI(dword) => Self::include_winapi_error_desc(&mut out, *dword),
+            // Apparently FormatMessage can also deal with HRESULTs too...
+            Error::WindowsCOM(hresult) => Self::include_winapi_error_desc(&mut out, *hresult as u32),
             _ => {}
         };
         out.finish()
