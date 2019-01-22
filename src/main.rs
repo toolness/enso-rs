@@ -24,7 +24,7 @@ fn run_enso() -> Result<(), Box<error::Error>> {
     println!("Starting Enso.");
     println!("To exit, hold down CAPS LOCK and type 'QUIT'.");
 
-    eloop.run(|| ui.process_event_receiver(&rx));
+    eloop.run(|| ui.process_event_receiver(&rx))?;
 
     keyhook.uninstall();
 

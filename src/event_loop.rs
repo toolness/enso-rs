@@ -3,6 +3,7 @@ use winapi::um::winuser::{GetMessageA, DispatchMessageA, PostThreadMessageA, WM_
 use winapi::um::processthreadsapi::GetCurrentThreadId;
 
 use super::windows_util;
+use super::error::Error;
 
 const WM_USER_KICK_EVENT_LOOP: u32 = WM_USER + 1;
 
@@ -26,7 +27,7 @@ impl EventLoop {
         self.thread_id
     }
 
-    pub fn run<F>(&self, mut loop_cb: F) where F: FnMut() -> bool {
+    pub fn run<F>(&self, mut loop_cb: F) -> Result<(), Error> where F: FnMut() -> bool {
         let mut msg = windows_util::create_blank_msg();
 
         loop {
@@ -37,7 +38,8 @@ impl EventLoop {
                 break;
             } else if result == -1 {
                 // An error was received.
-                println!("Received error.");
+                eprintln!("GetMessageA() returned -1.");
+                return Err(Error::from_winapi())
             } else {
                 if msg.hwnd == null_mut() {
                     match msg.message {
@@ -58,5 +60,7 @@ impl EventLoop {
             }
             if loop_cb() { break; }
         }
+
+        Ok(())
     }
 }
