@@ -12,6 +12,7 @@ use super::directx::{
     Direct2DLayeredWindowRenderer,
     LayeredWindowUpdateOptions
 };
+use super::error::Error;
 
 static mut WINDOW_CLASS: minwindef::ATOM = 0;
 static INIT_WINDOW_CLASS: Once = Once::new();
@@ -94,7 +95,7 @@ impl TransparentWindow {
         TransparentWindow { x, y, width, height, hwnd, renderer }
     }
 
-    pub fn draw_and_update<F>(&mut self, cb: F) where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
+    pub fn draw_and_update<F>(&mut self, cb: F) -> Result<(), Error> where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
         let update_info = LayeredWindowUpdateOptions {
             hwnd: self.hwnd,
             x: self.x,
@@ -102,13 +103,10 @@ impl TransparentWindow {
             width: self.width,
             height: self.height
         };
-        match self.renderer.draw_and_update_layered_window(
+        self.renderer.draw_and_update_layered_window(
             &update_info,
             cb
-        ) {
-            Ok(_) => { println!("Drawing successful.") },
-            Err(e) => { println!("Error drawing: {:?}", e) }
-        };
+        )
     }
 }
 

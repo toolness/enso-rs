@@ -6,6 +6,7 @@ use super::events::Event;
 use super::windows_util::vkey_to_char;
 use super::transparent_window::TransparentWindow;
 use super::directx::Direct3DDevice;
+use super::error::Error;
 
 pub struct UserInterface {
     cmd: String,
@@ -18,22 +19,21 @@ impl UserInterface {
         UserInterface { cmd: String::new(), d3d_device, window: None }
     }
 
-    pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> bool {
+    pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> Result<bool, Error> {
         match receiver.try_recv() {
             Ok(event) => {
                 self.process_event(event)
             },
             Err(TryRecvError::Empty) => {
-                false
+                Ok(false)
             },
             Err(TryRecvError::Disconnected) => {
-                println!("Event send channel was disconnected!");
-                true
+                Err(Error::Other(Box::new(TryRecvError::Disconnected)))
             }
         }
     }
 
-    pub fn process_event(&mut self, event: Event) -> bool {
+    pub fn process_event(&mut self, event: Event) -> Result<bool, Error> {
         match event {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
@@ -41,14 +41,14 @@ impl UserInterface {
                 let mut window = TransparentWindow::new(&mut self.d3d_device, 20, 20, 100, 100);
                 window.draw_and_update(|target| {
                     target.clear(0xFF_FF_FF);
-                });
+                })?;
                 self.window = Some(window);
             },
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
                 self.window = None;
                 match self.cmd.as_str() {
-                    "QUIT" => return true,
+                    "QUIT" => return Ok(true),
                     "" => {},
                     _ => {
                         println!("Unknown command '{}'.", self.cmd);
@@ -72,6 +72,6 @@ impl UserInterface {
                 }
             },
         };
-        return false;
+        return Ok(false);
     }
 }

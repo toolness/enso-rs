@@ -27,7 +27,7 @@ impl EventLoop {
         self.thread_id
     }
 
-    pub fn run<F>(&self, mut loop_cb: F) -> Result<(), Error> where F: FnMut() -> bool {
+    pub fn run<F>(&self, mut loop_cb: F) -> Result<(), Error> where F: FnMut() -> Result<bool, Error> {
         let mut msg = windows_util::create_blank_msg();
 
         loop {
@@ -58,7 +58,7 @@ impl EventLoop {
                 }
                 unsafe { DispatchMessageA(&msg); }
             }
-            if loop_cb() { break; }
+            if loop_cb()? { break; }
         }
 
         Ok(())
