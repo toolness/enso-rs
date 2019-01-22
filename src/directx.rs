@@ -54,7 +54,6 @@ use direct2d::factory::Factory;
 use direct2d::render_target::{
     DxgiSurfaceRenderTarget,
     RenderTarget,
-    RenderTag
 };
 
 use super::error::Error;
@@ -238,12 +237,20 @@ impl Direct2DLayeredWindowRenderer {
         &mut self,
         update_options: &LayeredWindowUpdateOptions,
         cb: F
-    ) -> Result<(), (direct2d::error::Error, Option<RenderTag>)>
+    ) -> Result<(), Error>
     where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
         self.dxgi_target.begin_draw();
         cb(&mut self.dxgi_target);
         self.update_layered_window(update_options);
-        self.dxgi_target.end_draw()
+        match self.dxgi_target.end_draw() {
+            Ok(()) => Ok(()),
+            Err((err, opt_tag)) => {
+                Err(Error::Direct2DWithRenderTag(err, match opt_tag {
+                    None => "",
+                    Some(tag) => tag.loc
+                }))
+            }
+        }
     }
 
     pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) {

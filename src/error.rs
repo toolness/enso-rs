@@ -13,6 +13,7 @@ use winapi::um::winbase::{
 pub enum Error {
     WindowsCOM(HRESULT),
     WindowsAPI(DWORD),
+    Direct2DWithRenderTag(direct2d::error::Error, &'static str),
     Other(Box<dyn std::error::Error>)
 }
 
