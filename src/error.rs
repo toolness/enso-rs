@@ -65,9 +65,6 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
 }
 
 impl From<std::str::Utf8Error> for Error {
