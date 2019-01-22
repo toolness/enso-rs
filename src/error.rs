@@ -22,7 +22,7 @@ impl Error {
     }
 
     fn get_winapi_error_desc(dword: DWORD) -> Result<String, Error> {
-        let mut buf: [u8; 255] = [0; 255];
+        let mut buf: [u8; 1024] = [0; 1024];
         let result = unsafe {
             FormatMessageA(
                 FORMAT_MESSAGE_FROM_SYSTEM,
