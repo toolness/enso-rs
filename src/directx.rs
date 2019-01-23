@@ -136,7 +136,7 @@ impl Direct3DTexture {
         Ok(Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface })
     }
 
-    pub fn create_d2d_layered_window_renderer(&mut self) -> Direct2DLayeredWindowRenderer {
+    pub fn create_d2d_layered_window_renderer(&mut self) -> Result<Direct2DLayeredWindowRenderer, Error> {
         let factory = Factory::new().expect("Creating Direct2D factory failed");
         let (dpi_x, dpi_y) = factory.get_desktop_dpi();
         let props = D2D1_RENDER_TARGET_PROPERTIES {
@@ -164,14 +164,11 @@ impl Direct3DTexture {
         let mut target: *mut ID2D1RenderTarget = null_mut();
         unsafe {
             let raw_factory = factory.get_raw();
-            let result = (*raw_factory).CreateDxgiSurfaceRenderTarget(
+            Error::validate_hresult((*raw_factory).CreateDxgiSurfaceRenderTarget(
                 self.surface,
                 &props,
                 &mut target
-            );
-            if result != S_OK {
-                panic!("CreateDxgiSurfaceRenderTarget() returned {}!", result);
-            }
+            ))?;
 
             // I *think* we're passing ownership of this target to the
             // DxgiSurfaceRenderTarget, so it will be responsible for
@@ -179,18 +176,15 @@ impl Direct3DTexture {
             let dxgi_target = DxgiSurfaceRenderTarget::from_raw(target);
 
             let mut gdi_interop_ptr: *mut c_void = null_mut();
-            let gresult = (*target).QueryInterface(
+            Error::validate_hresult((*target).QueryInterface(
                 &ID2D1GdiInteropRenderTarget::uuidof(),
                 &mut gdi_interop_ptr
-            );
-            if gresult != S_OK {
-                panic!("QueryInterface(ID2D1GdiInteropRenderTarget) returned {}!", gresult);
-            }
+            ))?;
 
-            Direct2DLayeredWindowRenderer {
+            Ok(Direct2DLayeredWindowRenderer {
                 dxgi_target,
                 gdi_interop_target: gdi_interop_ptr as *mut ID2D1GdiInteropRenderTarget
-            }
+            })
         }
     }
 }

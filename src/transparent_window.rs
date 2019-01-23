@@ -90,7 +90,7 @@ impl TransparentWindow {
         let hwnd = unsafe { Self::create_window(x, y, width, height) };
 
         let mut texture = d3d_device.create_texture_2d(width, height)?;
-        let renderer = texture.create_d2d_layered_window_renderer();
+        let renderer = texture.create_d2d_layered_window_renderer()?;
 
         Ok(TransparentWindow { x, y, width, height, hwnd, renderer })
     }
