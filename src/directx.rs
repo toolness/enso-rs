@@ -30,7 +30,6 @@ use winapi::um::dcommon::{
     D2D1_PIXEL_FORMAT,
     D2D1_ALPHA_MODE_PREMULTIPLIED
 };
-use winapi::shared::winerror::S_OK;
 use winapi::um::d2d1::{
     ID2D1RenderTarget,
     ID2D1GdiInteropRenderTarget,
@@ -234,16 +233,10 @@ impl Direct2DLayeredWindowRenderer {
 
     pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) -> Result<(), Error> {
         let mut hdc: HDC = null_mut();
-        unsafe {
-            let result = (*self.gdi_interop_target).GetDC(
-                D2D1_DC_INITIALIZE_MODE_COPY,
-                &mut hdc
-            );
-            if result != S_OK {
-                eprintln!("GetDC() failed!");
-                return Err(Error::WindowsCOM(result));
-            }
-        }
+        Error::validate_hresult(unsafe { (*self.gdi_interop_target).GetDC(
+            D2D1_DC_INITIALIZE_MODE_COPY,
+            &mut hdc
+        ) })?;
         let blendfunc = BLENDFUNCTION {
             SourceConstantAlpha: 255,
             AlphaFormat: AC_SRC_ALPHA,
@@ -279,12 +272,10 @@ impl Direct2DLayeredWindowRenderer {
                 eprintln!("UpdateLayeredWindowIndirect() failed!");
                 return Err(Error::from_winapi());
             }
-            let result = (*self.gdi_interop_target).ReleaseDC(null_mut());
-            if result != S_OK {
-                eprintln!("ReleaseDC() failed!");
-                return Err(Error::WindowsCOM(result));
-            }
         }
+        Error::validate_hresult(unsafe {
+            (*self.gdi_interop_target).ReleaseDC(null_mut())
+        })?;
         Ok(())
     }
 }
