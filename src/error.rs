@@ -1,7 +1,7 @@
 use std::fmt;
 use std::error;
 use std::ptr::null_mut;
-use winapi::shared::winerror::HRESULT;
+use winapi::shared::winerror::{HRESULT, S_OK};
 use winapi::shared::minwindef::DWORD;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::winbase::{
@@ -20,6 +20,14 @@ pub enum Error {
 impl Error {
     pub fn from_winapi() -> Self {
         Error::WindowsAPI(unsafe { GetLastError() })
+    }
+
+    pub fn validate_hresult(hresult: HRESULT) -> Result<(), Error> {
+        if hresult == S_OK {
+            Ok(())
+        } else {
+            Err(Error::WindowsCOM(hresult))
+        }
     }
 
     fn get_winapi_error_desc(dword: DWORD) -> Result<String, Error> {

@@ -66,23 +66,18 @@ impl Direct3DDevice {
     pub fn new() -> Result<Self, Error> {
         let mut device: *mut ID3D11Device = null_mut();
 
-        unsafe {
-            let result = D3D11CreateDevice(
-                null_mut(),
-                D3D_DRIVER_TYPE_HARDWARE,
-                null_mut(),
-                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-                null_mut(),
-                0,
-                D3D11_SDK_VERSION,
-                &mut device,
-                null_mut(),
-                null_mut()   // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
-            );
-            if result != S_OK {
-                return Err(Error::WindowsCOM(result));
-            }
-        }
+        Error::validate_hresult(unsafe { D3D11CreateDevice(
+            null_mut(),
+            D3D_DRIVER_TYPE_HARDWARE,
+            null_mut(),
+            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+            null_mut(),
+            0,
+            D3D11_SDK_VERSION,
+            &mut device,
+            null_mut(),
+            null_mut()   // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
+        ) })?;
 
         Ok(Direct3DDevice { device })
     }
