@@ -86,7 +86,7 @@ impl Direct3DDevice {
         unsafe { (*self.device).GetFeatureLevel() }
     }
 
-    pub fn create_texture_2d(&mut self, width: u32, height: u32) -> Direct3DTexture {
+    pub fn create_texture_2d(&mut self, width: u32, height: u32) -> Result<Direct3DTexture, Error> {
         Direct3DTexture::new(self.device, width, height)
     }
 }
@@ -105,7 +105,7 @@ pub struct Direct3DTexture {
 }
 
 impl Direct3DTexture {
-    pub fn new(device: *mut ID3D11Device, width: u32, height: u32) -> Self {
+    pub fn new(device: *mut ID3D11Device, width: u32, height: u32) -> Result<Self, Error> {
         let mut texture: *mut ID3D11Texture2D = null_mut();
         let mut surface_ptr: *mut c_void = null_mut();
         let desc = D3D11_TEXTURE2D_DESC {
@@ -123,27 +123,17 @@ impl Direct3DTexture {
             CPUAccessFlags: 0,
             Usage: D3D11_USAGE_DEFAULT
         };
-        unsafe {
-            let result = (*device).CreateTexture2D(
-                &desc,
-                null_mut(),
-                &mut texture
-            );
-            if result != S_OK {
-                panic!("CreateTexture2D() returned {}!", result);
-            }
-        };
-        unsafe {
-            let result = (*texture).QueryInterface(
-                &IID_IDXGISurface,
-                &mut surface_ptr
-            );
-            if result != S_OK {
-                panic!("QueryInterface(IDXGISurface) returned {}!", result);
-            }
-        }
+        Error::validate_hresult(unsafe { (*device).CreateTexture2D(
+            &desc,
+            null_mut(),
+            &mut texture
+        ) })?;
+        Error::validate_hresult(unsafe { (*texture).QueryInterface(
+            &IID_IDXGISurface,
+            &mut surface_ptr
+        ) })?;
 
-        Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface }
+        Ok(Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface })
     }
 
     pub fn create_d2d_layered_window_renderer(&mut self) -> Direct2DLayeredWindowRenderer {

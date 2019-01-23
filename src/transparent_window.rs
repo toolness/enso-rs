@@ -86,13 +86,13 @@ impl TransparentWindow {
         window
     }
 
-    pub fn new(d3d_device: &mut Direct3DDevice, x: i32, y: i32, width: u32, height: u32) -> Self {
+    pub fn new(d3d_device: &mut Direct3DDevice, x: i32, y: i32, width: u32, height: u32) -> Result<Self, Error> {
         let hwnd = unsafe { Self::create_window(x, y, width, height) };
 
-        let mut texture = d3d_device.create_texture_2d(width, height);
+        let mut texture = d3d_device.create_texture_2d(width, height)?;
         let renderer = texture.create_d2d_layered_window_renderer();
 
-        TransparentWindow { x, y, width, height, hwnd, renderer }
+        Ok(TransparentWindow { x, y, width, height, hwnd, renderer })
     }
 
     pub fn draw_and_update<F>(&mut self, cb: F) -> Result<(), Error> where F: FnOnce(&mut DxgiSurfaceRenderTarget) {

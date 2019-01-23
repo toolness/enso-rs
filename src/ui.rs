@@ -38,7 +38,7 @@ impl UserInterface {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.cmd.clear();
-                let mut window = TransparentWindow::new(&mut self.d3d_device, 20, 20, 100, 100);
+                let mut window = TransparentWindow::new(&mut self.d3d_device, 20, 20, 100, 100)?;
                 window.draw_and_update(|target| {
                     target.clear(0xFF_FF_FF);
                 })?;
