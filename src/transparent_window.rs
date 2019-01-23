@@ -2,7 +2,6 @@ use std::ptr::null_mut;
 use std::ffi::CStr;
 use std::sync::Once;
 use winapi::um::{winuser, wingdi};
-use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::shared::{minwindef, windef};
 use direct2d::render_target::DxgiSurfaceRenderTarget;
@@ -28,42 +27,43 @@ pub struct TransparentWindow {
 }
 
 impl TransparentWindow {
-    unsafe fn create_window_class() -> minwindef::ATOM {
+    fn create_window_class() -> minwindef::ATOM {
         INIT_WINDOW_CLASS.call_once(|| {
+            let bg = unsafe { wingdi::GetStockObject(wingdi::HOLLOW_BRUSH as i32) as windef::HBRUSH };
             let info = winuser::WNDCLASSEXA {
                 cbSize: std::mem::size_of::<winuser::WNDCLASSEXA>() as u32,
                 style: 0,
                 lpfnWndProc: Some(winuser::DefWindowProcA),
                 cbClsExtra: 0,
                 cbWndExtra: 0,
-                hInstance: GetModuleHandleA(null_mut()),
+                hInstance: unsafe { GetModuleHandleA(null_mut()) },
                 hIcon: null_mut(),
                 hCursor: null_mut(),
-                hbrBackground: wingdi::GetStockObject(wingdi::HOLLOW_BRUSH as i32) as windef::HBRUSH,
+                hbrBackground: bg,
                 lpszMenuName: null_mut(),
-                lpszClassName: window_class_name_ptr(),
+                lpszClassName: unsafe { window_class_name_ptr() },
                 hIconSm: null_mut()
             };
 
-            let window_class = winuser::RegisterClassExA(&info);
+            let window_class = unsafe { winuser::RegisterClassExA(&info) };
 
             if window_class == 0 {
-                panic!("RegisterClassExA() failed with error 0x{:x}!", GetLastError());
+                panic!("RegisterClassExA() failed!");
             }
-            WINDOW_CLASS = window_class;
+            unsafe { WINDOW_CLASS = window_class };
         });
-        WINDOW_CLASS
+        unsafe { WINDOW_CLASS }
     }
 
-    unsafe fn create_window(x: i32, y: i32, width: u32, height: u32) -> windef::HWND {
+    fn create_window(x: i32, y: i32, width: u32, height: u32) -> Result<windef::HWND, Error> {
         Self::create_window_class();
-        let old_fg_window = winuser::GetForegroundWindow();
+        let old_fg_window = unsafe { winuser::GetForegroundWindow() };
         let ex_style = winuser::WS_EX_LAYERED |
             winuser::WS_EX_TOOLWINDOW |
             winuser::WS_EX_TOPMOST |
             winuser::WS_EX_TRANSPARENT;
         let window_style = winuser::WS_VISIBLE | winuser::WS_POPUP;
-        let window = winuser::CreateWindowExA(
+        let window = unsafe { winuser::CreateWindowExA(
             ex_style,                       /* dwExStyle    */
             window_class_name_ptr(),        /* lpClassName  */
             null_mut(),                     /* lpWindowName */
@@ -76,18 +76,18 @@ impl TransparentWindow {
             null_mut(),                     /* hMenu        */
             GetModuleHandleA(null_mut()),   /* hInstance    */
             null_mut()                      /* lpParam      */
-        );
+        ) };
 
         if window == null_mut() {
-            panic!("CreateWindowExA() failed!");
+            return Err(Error::from_winapi());
         }
-        winuser::SetForegroundWindow(old_fg_window);
+        unsafe { winuser::SetForegroundWindow(old_fg_window) };
 
-        window
+        Ok(window)
     }
 
     pub fn new(d3d_device: &mut Direct3DDevice, x: i32, y: i32, width: u32, height: u32) -> Result<Self, Error> {
-        let hwnd = unsafe { Self::create_window(x, y, width, height) };
+        let hwnd = Self::create_window(x, y, width, height)?;
 
         let mut texture = d3d_device.create_texture_2d(width, height)?;
         let renderer = texture.create_d2d_layered_window_renderer()?;
