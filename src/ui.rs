@@ -1,12 +1,20 @@
 use winapi::um::winuser::VK_BACK;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use direct2d::render_target::RenderTarget;
+use directwrite::factory::Factory;
+use directwrite::TextFormat;
+use direct2d::math::RectF;
+use direct2d::brush::solid_color::SolidColorBrush;
+use direct2d::enums::DrawTextOptions;
 
 use super::events::Event;
 use super::windows_util::vkey_to_char;
 use super::transparent_window::TransparentWindow;
 use super::directx::Direct3DDevice;
 use super::error::Error;
+
+const WIDTH: u32 = 640;
+const HEIGHT: u32 = 480;
 
 pub struct UserInterface {
     cmd: String,
@@ -33,16 +41,41 @@ impl UserInterface {
         }
     }
 
+    fn draw_quasimode(&mut self) -> Result<(), Error> {
+        let text = self.cmd.as_str();
+        if let Some(ref mut window) = self.window {
+            window.draw_and_update(|target| {
+                let factory = Factory::new().unwrap();
+                let format = TextFormat::create(&factory)
+                    .with_family("Georgia")
+                    .with_size(24.0)
+                    .build().unwrap();
+                let rect = RectF::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
+                let brush = SolidColorBrush::create(&target)
+                    .with_color(0x00_00_00)
+                    .build().unwrap();
+                target.clear(0xFF_FF_FF);
+                target.draw_text(
+                    text,
+                    &format,
+                    rect,
+                    &brush,
+                    DrawTextOptions::NONE
+                );
+            })?;
+        }
+        Ok(())
+    }
+
     pub fn process_event(&mut self, event: Event) -> Result<bool, Error> {
         match event {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.cmd.clear();
-                let mut window = TransparentWindow::new(&mut self.d3d_device, 20, 20, 100, 100)?;
-                window.draw_and_update(|target| {
-                    target.clear(0xFF_FF_FF);
-                })?;
+                let window = TransparentWindow::new(&mut self.d3d_device, 0, 0, WIDTH, HEIGHT)?;
+
                 self.window = Some(window);
+                self.draw_quasimode()?;
             },
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
@@ -68,6 +101,7 @@ impl UserInterface {
                     false
                 };
                 if changed {
+                    self.draw_quasimode()?;
                     println!("Command so far: {}", self.cmd);
                 }
             },

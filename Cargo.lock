@@ -50,6 +50,7 @@ name = "enso-rs"
 version = "0.1.0"
 dependencies = [
  "direct2d 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "directwrite 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
