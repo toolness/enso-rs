@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use direct2d::render_target::RenderTarget;
 use directwrite::factory::Factory;
 use directwrite::TextFormat;
-use direct2d::math::RectF;
+use direct2d::math::{RectF, ColorF};
 use direct2d::brush::solid_color::SolidColorBrush;
 use direct2d::enums::DrawTextOptions;
 
@@ -48,13 +48,13 @@ impl UserInterface {
                 let factory = Factory::new().unwrap();
                 let format = TextFormat::create(&factory)
                     .with_family("Georgia")
-                    .with_size(24.0)
+                    .with_size(36.0)
                     .build().unwrap();
                 let rect = RectF::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
                 let brush = SolidColorBrush::create(&target)
-                    .with_color(0x00_00_00)
+                    .with_color(0xFF_FF_FF)
                     .build().unwrap();
-                target.clear(0xFF_FF_FF);
+                target.clear(ColorF::uint_rgb(0, 0.8));
                 target.draw_text(
                     text,
                     &format,
