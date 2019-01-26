@@ -89,6 +89,12 @@ impl From<DWriteError> for Error {
     }
 }
 
+impl From<direct2d::error::Error> for Error {
+    fn from(err: direct2d::error::Error) -> Error {
+        Error::Direct2DWithRenderTag(err, "")
+    }
+}
+
 #[test]
 fn test_from_winapi_works() {
     use winapi::um::winuser::GetClientRect;

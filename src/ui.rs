@@ -60,7 +60,7 @@ impl UserInterface {
                 let rect = RectF::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
                 let brush = SolidColorBrush::create(&target)
                     .with_color(0xFF_FF_FF)
-                    .build().unwrap();
+                    .build()?;
                 target.clear(ColorF::uint_rgb(0, 0.8));
                 target.draw_text(
                     text,
@@ -69,6 +69,7 @@ impl UserInterface {
                     &brush,
                     DrawTextOptions::NONE
                 );
+                Ok(())
             })?;
         }
         Ok(())

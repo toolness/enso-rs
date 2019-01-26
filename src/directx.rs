@@ -216,9 +216,9 @@ impl Direct2DLayeredWindowRenderer {
         update_options: &LayeredWindowUpdateOptions,
         cb: F
     ) -> Result<(), Error>
-    where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
+    where F: FnOnce(&mut DxgiSurfaceRenderTarget) -> Result<(), Error> {
         self.dxgi_target.begin_draw();
-        cb(&mut self.dxgi_target);
+        cb(&mut self.dxgi_target)?;
         self.update_layered_window(update_options)?;
         match self.dxgi_target.end_draw() {
             Ok(()) => Ok(()),

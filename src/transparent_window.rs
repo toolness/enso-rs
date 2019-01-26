@@ -95,7 +95,7 @@ impl TransparentWindow {
         Ok(TransparentWindow { x, y, width, height, hwnd, renderer })
     }
 
-    pub fn draw_and_update<F>(&mut self, cb: F) -> Result<(), Error> where F: FnOnce(&mut DxgiSurfaceRenderTarget) {
+    pub fn draw_and_update<F>(&mut self, cb: F) -> Result<(), Error> where F: FnOnce(&mut DxgiSurfaceRenderTarget) -> Result<(), Error> {
         let update_info = LayeredWindowUpdateOptions {
             hwnd: self.hwnd,
             x: self.x,
