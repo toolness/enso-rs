@@ -19,12 +19,23 @@ const HEIGHT: u32 = 480;
 pub struct UserInterface {
     cmd: String,
     d3d_device: Direct3DDevice,
+    text_format: TextFormat,
     window: Option<TransparentWindow>
 }
 
 impl UserInterface {
     pub fn new(d3d_device: Direct3DDevice) -> Self {
-        UserInterface { cmd: String::new(), d3d_device, window: None }
+        let dw_factory = Factory::new().unwrap();
+        let text_format = TextFormat::create(&dw_factory)
+            .with_family("Georgia")
+            .with_size(36.0)
+            .build().unwrap();
+        UserInterface {
+            cmd: String::new(),
+            d3d_device,
+            text_format,
+            window: None
+        }
     }
 
     pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> Result<bool, Error> {
@@ -43,13 +54,9 @@ impl UserInterface {
 
     fn draw_quasimode(&mut self) -> Result<(), Error> {
         let text = self.cmd.as_str();
+        let text_format = &self.text_format;
         if let Some(ref mut window) = self.window {
             window.draw_and_update(|target| {
-                let factory = Factory::new().unwrap();
-                let format = TextFormat::create(&factory)
-                    .with_family("Georgia")
-                    .with_size(36.0)
-                    .build().unwrap();
                 let rect = RectF::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
                 let brush = SolidColorBrush::create(&target)
                     .with_color(0xFF_FF_FF)
@@ -57,7 +64,7 @@ impl UserInterface {
                 target.clear(ColorF::uint_rgb(0, 0.8));
                 target.draw_text(
                     text,
-                    &format,
+                    &text_format,
                     rect,
                     &brush,
                     DrawTextOptions::NONE
