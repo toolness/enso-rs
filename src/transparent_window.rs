@@ -131,5 +131,14 @@ impl Drop for TransparentWindow {
 }
 
 unsafe fn window_class_name_ptr() -> *const i8 {
+    // We're safe unwrapping this because an error will only
+    // occur if WINDOW_CLASS_NAME isn't nul-terminated or
+    // contains interior nul bytes, which we know won't
+    // be the case at runtime.
     CStr::from_bytes_with_nul(WINDOW_CLASS_NAME).unwrap().as_ptr()
+}
+
+#[test]
+fn test_window_class_name_ptr() {
+    unsafe { window_class_name_ptr(); }
 }
