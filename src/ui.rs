@@ -110,7 +110,7 @@ impl UserInterface {
                 println!("Ending quasimode.");
                 self.window = None;
                 match self.cmd.as_str() {
-                    "QUIT" => return Ok(true),
+                    "quit" => return Ok(true),
                     "" => {},
                     _ => {
                         println!("Unknown command '{}'.", self.cmd);
@@ -124,7 +124,9 @@ impl UserInterface {
                         Some(_) => true
                     }
                 } else if let Some(ch) = vkey_to_char(vk_code) {
-                    self.cmd.push(ch);
+                    for lch in ch.to_lowercase() {
+                        self.cmd.push(lch);
+                    }
                     true
                 } else {
                     false
