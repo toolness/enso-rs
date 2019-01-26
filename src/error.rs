@@ -8,12 +8,14 @@ use winapi::um::winbase::{
     FormatMessageA,
     FORMAT_MESSAGE_FROM_SYSTEM
 };
+use directwrite::error::DWriteError;
 
 #[derive(Debug)]
 pub enum Error {
     WindowsCOM(HRESULT),
     WindowsAPI(DWORD),
     Direct2DWithRenderTag(direct2d::error::Error, &'static str),
+    DirectWrite(DWriteError),
     Other(Box<dyn std::error::Error>)
 }
 
@@ -78,6 +80,12 @@ impl error::Error for Error {
 impl From<std::str::Utf8Error> for Error {
     fn from(err: std::str::Utf8Error) -> Error {
         Error::Other(Box::new(err))
+    }
+}
+
+impl From<DWriteError> for Error {
+    fn from(err: DWriteError) -> Error {
+        Error::DirectWrite(err)
     }
 }
 

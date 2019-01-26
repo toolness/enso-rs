@@ -24,18 +24,18 @@ pub struct UserInterface {
 }
 
 impl UserInterface {
-    pub fn new(d3d_device: Direct3DDevice) -> Self {
-        let dw_factory = Factory::new().unwrap();
+    pub fn new(d3d_device: Direct3DDevice) -> Result<Self, Error> {
+        let dw_factory = Factory::new()?;
         let text_format = TextFormat::create(&dw_factory)
             .with_family("Georgia")
             .with_size(36.0)
-            .build().unwrap();
-        UserInterface {
+            .build()?;
+        Ok(UserInterface {
             cmd: String::new(),
             d3d_device,
             text_format,
             window: None
-        }
+        })
     }
 
     pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> Result<bool, Error> {
