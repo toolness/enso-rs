@@ -39,15 +39,19 @@ impl UserInterface {
     }
 
     pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> Result<bool, Error> {
-        match receiver.try_recv() {
-            Ok(event) => {
-                self.process_event(event)
-            },
-            Err(TryRecvError::Empty) => {
-                Ok(false)
-            },
-            Err(TryRecvError::Disconnected) => {
-                Err(Error::Other(Box::new(TryRecvError::Disconnected)))
+        loop {
+            match receiver.try_recv() {
+                Ok(event) => {
+                    if self.process_event(event)? {
+                        return Ok(true);
+                    }
+                },
+                Err(TryRecvError::Empty) => {
+                    return Ok(false);
+                },
+                Err(TryRecvError::Disconnected) => {
+                    return Err(Error::Other(Box::new(TryRecvError::Disconnected)));
+                }
             }
         }
     }

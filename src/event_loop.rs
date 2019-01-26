@@ -44,7 +44,9 @@ impl EventLoop {
                 if msg.hwnd == null_mut() {
                     match msg.message {
                         WM_USER_KICK_EVENT_LOOP => {
-                            // Do nothing.
+                            // Do nothing, this was just sent to kick us out of GetMessage so
+                            // our loop callback can process any incoming events sent through
+                            // other safe Rust-based synchronization mechanisms.
                         },
                         WM_TIMER => {
                             // Do nothing. It seems like DirectX or the GDI
