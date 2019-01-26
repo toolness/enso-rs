@@ -131,7 +131,6 @@ impl UserInterface {
                 };
                 if changed {
                     self.draw_quasimode()?;
-                    println!("Command so far: {}", self.cmd);
                 }
             },
         };
