@@ -108,6 +108,10 @@ impl TransparentWindow {
             cb
         )
     }
+
+    pub fn get_size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
 }
 
 impl Drop for TransparentWindow {

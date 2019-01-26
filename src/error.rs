@@ -14,6 +14,7 @@ use directwrite::error::DWriteError;
 pub enum Error {
     WindowsCOM(HRESULT),
     WindowsAPI(DWORD),
+    WindowsAPIGeneric,
     Direct2DWithRenderTag(direct2d::error::Error, &'static str),
     DirectWrite(DWriteError),
     Other(Box<dyn std::error::Error>)

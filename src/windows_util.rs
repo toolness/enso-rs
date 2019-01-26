@@ -1,7 +1,9 @@
 use std::ptr::null_mut;
 use winapi::um::winuser;
-use winapi::um::winuser::{MSG};
+use winapi::um::winuser::{MSG, SM_CXSCREEN, SM_CYSCREEN, GetSystemMetrics};
 use winapi::shared::windef::POINT;
+
+use super::error::Error;
 
 const VK_0: i32 = 0x30;
 const VK_9: i32 = 0x39;
@@ -17,6 +19,26 @@ pub fn create_blank_msg() -> MSG {
         time: 0,
         pt: POINT { x: 0, y: 0 }
     }
+}
+
+fn get_system_metrics(n_index: i32) -> Result<i32, Error> {
+    let result = unsafe { GetSystemMetrics(n_index) };
+    if result == 0 {
+        Err(Error::WindowsAPIGeneric)
+    } else {
+        Ok(result)
+    }
+}
+
+pub fn get_primary_screen_size() -> Result<(u32, u32), Error> {
+    let width = get_system_metrics(SM_CXSCREEN)? as u32;
+    let height = get_system_metrics(SM_CYSCREEN)? as u32;
+    Ok((width, height))
+}
+
+#[test]
+fn test_get_primary_screen_size() {
+    assert!(get_primary_screen_size().is_ok());
 }
 
 pub fn vkey_to_char(vk_code: i32) -> Option<char> {

@@ -8,13 +8,10 @@ use direct2d::brush::solid_color::SolidColorBrush;
 use direct2d::enums::DrawTextOptions;
 
 use super::events::Event;
-use super::windows_util::vkey_to_char;
+use super::windows_util::{vkey_to_char, get_primary_screen_size};
 use super::transparent_window::TransparentWindow;
 use super::directx::Direct3DDevice;
 use super::error::Error;
-
-const WIDTH: u32 = 640;
-const HEIGHT: u32 = 480;
 
 pub struct UserInterface {
     cmd: String,
@@ -60,8 +57,9 @@ impl UserInterface {
         let text = self.cmd.as_str();
         let text_format = &self.text_format;
         if let Some(ref mut window) = self.window {
+            let (width, height) = window.get_size();
             window.draw_and_update(|target| {
-                let rect = RectF::new(0.0, 0.0, WIDTH as f32, HEIGHT as f32);
+                let rect = RectF::new(0.0, 0.0, width as f32, height as f32);
                 let brush = SolidColorBrush::create(&target)
                     .with_color(0xFF_FF_FF)
                     .build()?;
@@ -84,7 +82,8 @@ impl UserInterface {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.cmd.clear();
-                let window = TransparentWindow::new(&mut self.d3d_device, 0, 0, WIDTH, HEIGHT)?;
+                let (width, height) = get_primary_screen_size()?;
+                let window = TransparentWindow::new(&mut self.d3d_device, 0, 0, width, height)?;
 
                 self.window = Some(window);
                 self.draw_quasimode()?;
