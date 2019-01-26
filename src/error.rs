@@ -21,8 +21,12 @@ pub enum Error {
 }
 
 impl Error {
+    pub fn get_last_windows_api_error() -> DWORD {
+        unsafe { GetLastError() }
+    }
+
     pub fn from_winapi() -> Self {
-        Error::WindowsAPI(unsafe { GetLastError() })
+        Error::WindowsAPI(Self::get_last_windows_api_error())
     }
 
     pub fn validate_hresult(hresult: HRESULT) -> Result<(), Error> {

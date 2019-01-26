@@ -13,7 +13,7 @@ use super::directx::{
 };
 use super::error::Error;
 
-static mut WINDOW_CLASS: minwindef::ATOM = 0;
+static mut WINDOW_CLASS: Result<minwindef::ATOM, minwindef::DWORD> = Ok(0);
 static INIT_WINDOW_CLASS: Once = Once::new();
 static WINDOW_CLASS_NAME: &'static [u8] = b"EnsoTransparentWindow\0";
 
@@ -27,7 +27,7 @@ pub struct TransparentWindow {
 }
 
 impl TransparentWindow {
-    fn create_window_class() -> minwindef::ATOM {
+    fn create_window_class() -> Result<minwindef::ATOM, Error> {
         INIT_WINDOW_CLASS.call_once(|| {
             let bg = unsafe { wingdi::GetStockObject(wingdi::HOLLOW_BRUSH as i32) as windef::HBRUSH };
             let info = winuser::WNDCLASSEXA {
@@ -47,16 +47,23 @@ impl TransparentWindow {
 
             let window_class = unsafe { winuser::RegisterClassExA(&info) };
 
-            if window_class == 0 {
-                panic!("RegisterClassExA() failed!");
+            unsafe {
+                WINDOW_CLASS = if window_class == 0 {
+                    Err(Error::get_last_windows_api_error())
+                } else {
+                    Ok(window_class)
+                };
             }
-            unsafe { WINDOW_CLASS = window_class };
         });
-        unsafe { WINDOW_CLASS }
+        let result = unsafe { WINDOW_CLASS };
+        match result {
+            Ok(atom) => Ok(atom),
+            Err(code) => Err(Error::WindowsAPI(code))
+        }
     }
 
     fn create_window(x: i32, y: i32, width: u32, height: u32) -> Result<windef::HWND, Error> {
-        Self::create_window_class();
+        Self::create_window_class()?;
         let old_fg_window = unsafe { winuser::GetForegroundWindow() };
         let ex_style = winuser::WS_EX_LAYERED |
             winuser::WS_EX_TOOLWINDOW |
