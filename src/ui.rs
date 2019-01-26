@@ -2,8 +2,8 @@ use winapi::um::winuser::VK_BACK;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use direct2d::render_target::RenderTarget;
 use directwrite::factory::Factory;
-use directwrite::TextFormat;
-use direct2d::math::{RectF, ColorF};
+use directwrite::{TextFormat, TextLayout};
+use direct2d::math::ColorF;
 use direct2d::brush::solid_color::SolidColorBrush;
 use direct2d::enums::DrawTextOptions;
 
@@ -13,9 +13,12 @@ use super::transparent_window::TransparentWindow;
 use super::directx::Direct3DDevice;
 use super::error::Error;
 
+const PADDING: f32 = 8.0;
+
 pub struct UserInterface {
     cmd: String,
     d3d_device: Direct3DDevice,
+    dw_factory: Factory,
     text_format: TextFormat,
     window: Option<TransparentWindow>
 }
@@ -30,6 +33,7 @@ impl UserInterface {
         Ok(UserInterface {
             cmd: String::new(),
             d3d_device,
+            dw_factory,
             text_format,
             window: None
         })
@@ -54,23 +58,37 @@ impl UserInterface {
     }
 
     fn draw_quasimode(&mut self) -> Result<(), Error> {
-        let text = self.cmd.as_str();
-        let text_format = &self.text_format;
+        let is_cmd_empty = self.cmd.len() == 0;
         if let Some(ref mut window) = self.window {
-            let (width, height) = window.get_size();
-            window.draw_and_update(|target| {
-                let rect = RectF::new(0.0, 0.0, width as f32, height as f32);
-                let brush = SolidColorBrush::create(&target)
+            let (screen_width, screen_height) = window.get_size();
+            let text_layout = TextLayout::create(&self.dw_factory)
+                .with_text(self.cmd.as_str())
+                .with_font(&self.text_format)
+                .with_size(screen_width as f32, screen_height as f32)
+                .build()?;
+            let metrics = text_layout.get_metrics();
+            let (text_width, text_height) = (metrics.width(), metrics.height());
+            window.draw_and_update(move|target| {
+                let black_brush = SolidColorBrush::create(&target)
+                    .with_color(ColorF::uint_rgb(0, 0.5))
+                    .build()?;
+                let white_brush = SolidColorBrush::create(&target)
                     .with_color(0xFF_FF_FF)
                     .build()?;
-                target.clear(ColorF::uint_rgb(0, 0.8));
-                target.draw_text(
-                    text,
-                    &text_format,
-                    rect,
-                    &brush,
-                    DrawTextOptions::NONE
-                );
+                target.clear(ColorF::uint_rgb(0, 0.0));
+                if !is_cmd_empty {
+                    let pad = PADDING * 2.0;
+                    target.fill_rectangle(
+                        (0.0, 0.0, text_width + pad, text_height + pad),
+                        &black_brush
+                    );
+                    target.draw_text_layout(
+                        (PADDING, PADDING),
+                        &text_layout,
+                        &white_brush,
+                        DrawTextOptions::NONE
+                    );
+                }
                 Ok(())
             })?;
         }
