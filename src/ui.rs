@@ -14,6 +14,12 @@ use super::directx::Direct3DDevice;
 use super::error::Error;
 
 const PADDING: f32 = 8.0;
+const BG_COLOR: u32 = 0x00_00_00;
+const BG_ALPHA: f32 = 0.5;
+const TEXT_COLOR: u32 = 0xFF_FF_FF;
+const TEXT_ALPHA: f32 = 1.0;
+const FONT_FAMILY: &'static str = "Georgia";
+const FONT_SIZE: f32 = 36.0;
 
 pub struct UserInterface {
     cmd: String,
@@ -27,8 +33,8 @@ impl UserInterface {
     pub fn new(d3d_device: Direct3DDevice) -> Result<Self, Error> {
         let dw_factory = Factory::new()?;
         let text_format = TextFormat::create(&dw_factory)
-            .with_family("Georgia")
-            .with_size(36.0)
+            .with_family(FONT_FAMILY)
+            .with_size(FONT_SIZE)
             .build()?;
         Ok(UserInterface {
             cmd: String::new(),
@@ -70,10 +76,10 @@ impl UserInterface {
             let (text_width, text_height) = (metrics.width(), metrics.height());
             window.draw_and_update(move|target| {
                 let black_brush = SolidColorBrush::create(&target)
-                    .with_color(ColorF::uint_rgb(0, 0.5))
+                    .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
                     .build()?;
                 let white_brush = SolidColorBrush::create(&target)
-                    .with_color(0xFF_FF_FF)
+                    .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
                     .build()?;
                 target.clear(ColorF::uint_rgb(0, 0.0));
                 if !is_cmd_empty {
