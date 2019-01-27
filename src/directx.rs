@@ -220,15 +220,8 @@ impl Direct2DLayeredWindowRenderer {
         self.dxgi_target.begin_draw();
         cb(&mut self.dxgi_target)?;
         self.update_layered_window(update_options)?;
-        match self.dxgi_target.end_draw() {
-            Ok(()) => Ok(()),
-            Err((err, opt_tag)) => {
-                Err(Error::Direct2DWithRenderTag(err, match opt_tag {
-                    None => "",
-                    Some(tag) => tag.loc
-                }))
-            }
-        }
+        self.dxgi_target.end_draw()?;
+        Ok(())
     }
 
     pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) -> Result<(), Error> {

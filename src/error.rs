@@ -100,6 +100,18 @@ impl From<direct2d::error::Error> for Error {
     }
 }
 
+type D2DErrorWithRenderTag = (direct2d::error::Error, Option<direct2d::render_target::RenderTag>);
+
+impl From<D2DErrorWithRenderTag> for Error {
+    fn from(err_with_tag: D2DErrorWithRenderTag) -> Error {
+        let (err, opt_tag) = err_with_tag;
+        Error::Direct2DWithRenderTag(err, match opt_tag {
+            None => "",
+            Some(tag) => tag.loc
+        })
+    }
+}
+
 #[test]
 fn test_from_winapi_works() {
     use winapi::um::winuser::GetClientRect;
