@@ -13,13 +13,13 @@ use super::transparent_window::TransparentWindow;
 use super::directx::Direct3DDevice;
 use super::error::Error;
 
-const PADDING: f32 = 8.0;
+const PADDING: f32 = 16.0;
 const BG_COLOR: u32 = 0x00_00_00;
 const BG_ALPHA: f32 = 0.5;
 const TEXT_COLOR: u32 = 0xFF_FF_FF;
 const TEXT_ALPHA: f32 = 1.0;
 const FONT_FAMILY: &'static str = "Georgia";
-const FONT_SIZE: f32 = 36.0;
+const FONT_SIZE: f32 = 48.0;
 
 pub struct UserInterface {
     cmd: String,
