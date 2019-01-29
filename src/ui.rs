@@ -21,12 +21,59 @@ const TEXT_ALPHA: f32 = 1.0;
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 
+pub struct QuasimodeRenderer {
+    window: TransparentWindow
+}
+
+impl QuasimodeRenderer {
+    pub fn new(d3d_device: &mut Direct3DDevice) -> Result<Self, Error> {
+        let (width, height) = get_primary_screen_size()?;
+        let window = TransparentWindow::new(d3d_device, 0, 0, width, height)?;
+        Ok(Self { window })
+    }
+
+    pub fn draw(&mut self, cmd: &String, dw_factory: &Factory, text_format: &TextFormat) -> Result<(), Error> {
+        let (screen_width, screen_height) = self.window.get_size();
+        let text_layout = TextLayout::create(dw_factory)
+            .with_text(cmd)
+            .with_font(text_format)
+            .with_size(screen_width as f32, screen_height as f32)
+            .build()?;
+        let metrics = text_layout.get_metrics();
+        let (text_width, text_height) = (metrics.width(), metrics.height());
+        self.window.draw_and_update(move|target| {
+            let black_brush = SolidColorBrush::create(&target)
+                .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
+                .build()?;
+            let white_brush = SolidColorBrush::create(&target)
+                .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
+                .build()?;
+            target.clear(ColorF::uint_rgb(0, 0.0));
+            if cmd.len() > 0 {
+                let pad = PADDING * 2.0;
+                target.fill_rectangle(
+                    (0.0, 0.0, text_width + pad, text_height + pad),
+                    &black_brush
+                );
+                target.draw_text_layout(
+                    (PADDING, PADDING),
+                    &text_layout,
+                    &white_brush,
+                    DrawTextOptions::NONE
+                );
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+}
+
 pub struct UserInterface {
     cmd: String,
     d3d_device: Direct3DDevice,
     dw_factory: Factory,
     text_format: TextFormat,
-    window: Option<TransparentWindow>
+    quasimode: Option<QuasimodeRenderer>
 }
 
 impl UserInterface {
@@ -41,7 +88,7 @@ impl UserInterface {
             d3d_device,
             dw_factory,
             text_format,
-            window: None
+            quasimode: None
         })
     }
 
@@ -63,58 +110,20 @@ impl UserInterface {
         }
     }
 
-    fn draw_quasimode(&mut self) -> Result<(), Error> {
-        let is_cmd_empty = self.cmd.len() == 0;
-        if let Some(ref mut window) = self.window {
-            let (screen_width, screen_height) = window.get_size();
-            let text_layout = TextLayout::create(&self.dw_factory)
-                .with_text(self.cmd.as_str())
-                .with_font(&self.text_format)
-                .with_size(screen_width as f32, screen_height as f32)
-                .build()?;
-            let metrics = text_layout.get_metrics();
-            let (text_width, text_height) = (metrics.width(), metrics.height());
-            window.draw_and_update(move|target| {
-                let black_brush = SolidColorBrush::create(&target)
-                    .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
-                    .build()?;
-                let white_brush = SolidColorBrush::create(&target)
-                    .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
-                    .build()?;
-                target.clear(ColorF::uint_rgb(0, 0.0));
-                if !is_cmd_empty {
-                    let pad = PADDING * 2.0;
-                    target.fill_rectangle(
-                        (0.0, 0.0, text_width + pad, text_height + pad),
-                        &black_brush
-                    );
-                    target.draw_text_layout(
-                        (PADDING, PADDING),
-                        &text_layout,
-                        &white_brush,
-                        DrawTextOptions::NONE
-                    );
-                }
-                Ok(())
-            })?;
-        }
-        Ok(())
-    }
-
     pub fn process_event(&mut self, event: Event) -> Result<bool, Error> {
         match event {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.cmd.clear();
-                let (width, height) = get_primary_screen_size()?;
-                let window = TransparentWindow::new(&mut self.d3d_device, 0, 0, width, height)?;
 
-                self.window = Some(window);
-                self.draw_quasimode()?;
+                let mut quasimode = QuasimodeRenderer::new(&mut self.d3d_device)?;
+
+                quasimode.draw(&self.cmd, &self.dw_factory, &self.text_format)?;
+                self.quasimode = Some(quasimode);
             },
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
-                self.window = None;
+                self.quasimode = None;
                 match self.cmd.as_str() {
                     "quit" => return Ok(true),
                     "" => {},
@@ -138,7 +147,9 @@ impl UserInterface {
                     false
                 };
                 if changed {
-                    self.draw_quasimode()?;
+                    if let Some(ref mut quasimode) = self.quasimode {
+                        quasimode.draw(&self.cmd, &self.dw_factory, &self.text_format)?;
+                    }
                 }
             },
         };
