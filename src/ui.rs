@@ -111,15 +111,13 @@ impl UserInterface {
     }
 
     pub fn process_event(&mut self, event: Event) -> Result<bool, Error> {
+        let mut redraw_quasimode = false;
         match event {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.cmd.clear();
-
-                let mut quasimode = QuasimodeRenderer::new(&mut self.d3d_device)?;
-
-                quasimode.draw(&self.cmd, &self.dw_factory, &self.text_format)?;
-                self.quasimode = Some(quasimode);
+                self.quasimode = Some(QuasimodeRenderer::new(&mut self.d3d_device)?);
+                redraw_quasimode = true;
             },
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
@@ -133,7 +131,7 @@ impl UserInterface {
                 }
             },
             Event::Keypress(vk_code) => {
-                let changed = if vk_code == VK_BACK {
+                redraw_quasimode = if vk_code == VK_BACK {
                     match self.cmd.pop() {
                         None => false,
                         Some(_) => true
@@ -146,13 +144,13 @@ impl UserInterface {
                 } else {
                     false
                 };
-                if changed {
-                    if let Some(ref mut quasimode) = self.quasimode {
-                        quasimode.draw(&self.cmd, &self.dw_factory, &self.text_format)?;
-                    }
-                }
             },
         };
+        if redraw_quasimode {
+            if let Some(ref mut quasimode) = self.quasimode {
+                quasimode.draw(&self.cmd, &self.dw_factory, &self.text_format)?;
+            }
+        }
         return Ok(false);
     }
 }
