@@ -22,7 +22,7 @@ const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
 
-pub struct TransparentMessageRenderer {
+struct TransparentMessageRenderer {
     window: TransparentWindow
 }
 
@@ -69,7 +69,7 @@ impl TransparentMessageRenderer {
     }
 }
 
-pub struct QuasimodeRenderer {
+struct QuasimodeRenderer {
     window: TransparentWindow
 }
 
