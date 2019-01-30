@@ -22,6 +22,23 @@ const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
 
+struct Brushes {
+    pub black: SolidColorBrush,
+    pub white: SolidColorBrush
+}
+
+impl Brushes {
+    pub fn new<T: RenderTarget>(target: &mut T) -> Result<Self, Error> {
+        let black = SolidColorBrush::create(&target)
+            .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
+            .build()?;
+        let white = SolidColorBrush::create(&target)
+            .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
+            .build()?;
+        Ok(Brushes { black, white })
+    }
+}
+
 struct TransparentMessageRenderer {
     window: TransparentWindow
 }
@@ -46,21 +63,16 @@ impl TransparentMessageRenderer {
         let window = TransparentWindow::new(d3d_device, x as i32, y as i32, width as u32, height as u32)?;
         let mut result = Self { window };
         result.window.draw_and_update(move|target| {
-            let black_brush = SolidColorBrush::create(&target)
-                .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
-                .build()?;
-            let white_brush = SolidColorBrush::create(&target)
-                .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
-                .build()?;
+            let brushes = Brushes::new(target)?;
             target.clear(ColorF::uint_rgb(0, 0.0));
             target.fill_rectangle(
                 (0.0, 0.0, width, height),
-                &black_brush
+                &brushes.black
             );
             target.draw_text_layout(
                 (PADDING, PADDING),
                 &text_layout,
-                &white_brush,
+                &brushes.white,
                 DrawTextOptions::NONE
             );
             Ok(())
@@ -90,23 +102,18 @@ impl QuasimodeRenderer {
         let metrics = text_layout.get_metrics();
         let (text_width, text_height) = (metrics.width(), metrics.height());
         self.window.draw_and_update(move|target| {
-            let black_brush = SolidColorBrush::create(&target)
-                .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
-                .build()?;
-            let white_brush = SolidColorBrush::create(&target)
-                .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
-                .build()?;
+            let brushes = Brushes::new(target)?;
             target.clear(ColorF::uint_rgb(0, 0.0));
             if cmd.len() > 0 {
                 let pad = PADDING * 2.0;
                 target.fill_rectangle(
                     (0.0, 0.0, text_width + pad, text_height + pad),
-                    &black_brush
+                    &brushes.black
                 );
                 target.draw_text_layout(
                     (PADDING, PADDING),
                     &text_layout,
-                    &white_brush,
+                    &brushes.white,
                     DrawTextOptions::NONE
                 );
             }
