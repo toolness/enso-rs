@@ -21,6 +21,8 @@ fn run_enso() -> Result<(), Box<error::Error>> {
     let keyhook = keyboard_hook::KeyboardHook::install(tx, eloop.get_thread_id());
     let mut ui = ui::UserInterface::new(d3d_device)?;
 
+    ui.show_message("Welcome to Enso!")?;
+
     println!("Starting Enso.");
     println!("To exit, hold down CAPS LOCK and type 'QUIT'.");
 
