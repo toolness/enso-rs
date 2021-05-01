@@ -43,7 +43,7 @@ fn test_get_primary_screen_size() {
 
 pub fn vkey_to_char(vk_code: i32) -> Option<char> {
     match vk_code {
-        VK_0...VK_9 | VK_A...VK_Z => Some(char::from(vk_code as u8)),
+        VK_0..=VK_9 | VK_A..=VK_Z => Some(char::from(vk_code as u8)),
         winuser::VK_SPACE => Some(' '),
         _ => None
     }
