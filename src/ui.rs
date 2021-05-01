@@ -8,7 +8,7 @@ use direct2d::brush::solid_color::SolidColorBrush;
 use direct2d::enums::DrawTextOptions;
 
 use super::events::Event;
-use super::windows_util::{vkey_to_char, get_primary_screen_size};
+use super::windows_util::{vkey_to_char, get_primary_screen_size, send_unicode_keypress};
 use super::transparent_window::TransparentWindow;
 use super::directx::Direct3DDevice;
 use super::error::Error;
@@ -159,6 +159,10 @@ impl UserInterface {
         Ok(())
     }
 
+    pub fn type_char(&mut self, ch: &str) -> Result<(), Error> {
+        send_unicode_keypress(ch)
+    }
+
     pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> Result<bool, Error> {
         loop {
             match receiver.try_recv() {
@@ -198,6 +202,7 @@ impl UserInterface {
                 self.quasimode = None;
                 match self.cmd.as_str() {
                     "quit" => return Ok(true),
+                    "tada" => { self.type_char("🎉")? },
                     "" => {},
                     _ => {
                         println!("Unknown command '{}'.", self.cmd);

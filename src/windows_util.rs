@@ -1,6 +1,6 @@
 use std::ptr::null_mut;
 use winapi::um::winuser;
-use winapi::um::winuser::{MSG, SM_CXSCREEN, SM_CYSCREEN, GetSystemMetrics};
+use winapi::um::winuser::{MSG, SM_CXSCREEN, SM_CYSCREEN, GetSystemMetrics, SendInput, INPUT, INPUT_KEYBOARD, INPUT_u, KEYEVENTF_UNICODE};
 use winapi::shared::windef::POINT;
 
 use super::error::Error;
@@ -19,6 +19,27 @@ pub fn create_blank_msg() -> MSG {
         time: 0,
         pt: POINT { x: 0, y: 0 }
     }
+}
+
+pub fn send_unicode_keypress(value: &str) -> Result<(), Error> {
+    // https://stackoverflow.com/a/22308727/2422398
+    for ch in value.encode_utf16() {
+        unsafe {
+            let mut u: INPUT_u = Default::default();
+            let mut ki = u.ki_mut();
+            ki.wScan = ch;
+            ki.dwFlags = KEYEVENTF_UNICODE;
+            let mut inp = INPUT {
+                type_: INPUT_KEYBOARD,
+                u
+            };
+            let result = SendInput(1, &mut inp, std::mem::size_of_val(&inp) as i32);
+            if result != 1 {
+                return Err(Error::WindowsAPIGeneric);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn get_system_metrics(n_index: i32) -> Result<i32, Error> {
