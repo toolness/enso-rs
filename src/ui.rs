@@ -14,6 +14,7 @@ use super::directx::Direct3DDevice;
 use super::error::Error;
 
 const PADDING: f32 = 16.0;
+const PADDING_X2: f32 = PADDING * 2.0;
 const BG_COLOR: u32 = 0x00_00_00;
 const BG_ALPHA: f32 = 0.5;
 const TEXT_COLOR: u32 = 0xFF_FF_FF;
@@ -21,6 +22,7 @@ const TEXT_ALPHA: f32 = 1.0;
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
+const NOCMD_HELP: &'static str = "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
 
 struct Brushes {
     pub black: SolidColorBrush,
@@ -53,11 +55,10 @@ impl TransparentMessageRenderer {
             .build()?;
         text_layout.set_max_width(screen_width as f32 * MESSAGE_MAXWIDTH_PCT)?;
         text_layout.set_max_height(screen_height as f32)?;
-        let pad = PADDING * 2.0;
         let metrics = text_layout.get_metrics();
         let (text_width, text_height) = (metrics.width(), metrics.height());
-        let width = text_width + pad;
-        let height = text_height + pad;
+        let width = text_width + PADDING_X2;
+        let height = text_height + PADDING_X2;
         let x = screen_width as f32 / 2.0 - width / 2.0;
         let y = screen_height as f32 / 2.0 - height / 2.0;
         let window = TransparentWindow::new(d3d_device, x as i32, y as i32, width as u32, height as u32)?;
@@ -94,25 +95,44 @@ impl QuasimodeRenderer {
 
     pub fn draw(&mut self, cmd: &String, dw_factory: &Factory, text_format: &TextFormat) -> Result<(), Error> {
         let (screen_width, screen_height) = self.window.get_size();
-        let text_layout = TextLayout::create(dw_factory)
+
+        // Eventually this will be dynamically generated based on the currently matched command.
+        let help_text = NOCMD_HELP;
+
+        let help_layout = TextLayout::create(dw_factory)
+            .with_text(help_text)
+            .with_font(text_format)
+            .with_size(screen_width as f32, screen_height as f32)
+            .build()?;
+        let cmd_layout = TextLayout::create(dw_factory)
             .with_text(cmd)
             .with_font(text_format)
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
-        let metrics = text_layout.get_metrics();
-        let (text_width, text_height) = (metrics.width(), metrics.height());
         self.window.draw_and_update(move|target| {
             let brushes = Brushes::new(target)?;
             target.clear(ColorF::uint_rgb(0, 0.0));
+            let help_met = help_layout.get_metrics();
+            let (help_width, help_height) = (help_met.width() + PADDING_X2, help_met.height() + PADDING_X2);
+            target.fill_rectangle(
+                (0.0, 0.0, help_width, help_height),
+                &brushes.black,
+            );
+            target.draw_text_layout(
+                (PADDING, PADDING),
+                &help_layout,
+                &brushes.white,
+                DrawTextOptions::NONE
+            );
             if cmd.len() > 0 {
-                let pad = PADDING * 2.0;
+                let cmd_met = cmd_layout.get_metrics();
                 target.fill_rectangle(
-                    (0.0, 0.0, text_width + pad, text_height + pad),
+                    (0.0, help_height, cmd_met.width() + PADDING_X2, help_height + cmd_met.height() + PADDING_X2),
                     &brushes.black
                 );
                 target.draw_text_layout(
-                    (PADDING, PADDING),
-                    &text_layout,
+                    (PADDING, help_height + PADDING),
+                    &cmd_layout,
                     &brushes.white,
                     DrawTextOptions::NONE
                 );
@@ -203,6 +223,7 @@ impl UserInterface {
                 match self.cmd.as_str() {
                     "quit" => return Ok(true),
                     "tada" => { self.type_char("🎉")? },
+                    "help" => { self.show_message("Sorry, still need to implement help!")?; },
                     "" => {},
                     _ => {
                         println!("Unknown command '{}'.", self.cmd);
