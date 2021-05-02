@@ -1,59 +1,26 @@
+use direct2d::factory::Factory;
+use direct2d::render_target::{DxgiSurfaceRenderTarget, RenderTarget};
 use std::ptr::null_mut;
 use winapi::ctypes::c_void;
-use winapi::Interface;
-use winapi::shared::windef::{
-    HWND,
-    HDC,
-    POINT,
-    SIZE,
+use winapi::shared::dxgi::{IDXGISurface, IID_IDXGISurface};
+use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
+use winapi::shared::dxgitype::DXGI_SAMPLE_DESC;
+use winapi::shared::windef::{HDC, HWND, POINT, SIZE};
+use winapi::um::d2d1::{
+    ID2D1GdiInteropRenderTarget, ID2D1RenderTarget, D2D1_DC_INITIALIZE_MODE_COPY,
+    D2D1_FEATURE_LEVEL_DEFAULT, D2D1_RENDER_TARGET_PROPERTIES, D2D1_RENDER_TARGET_TYPE_DEFAULT,
+    D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
 };
 use winapi::um::d3d11::{
-    D3D11CreateDevice,
-    ID3D11Device,
-    ID3D11Texture2D,
-    D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-    D3D11_SDK_VERSION,
-    D3D11_TEXTURE2D_DESC,
-    D3D11_BIND_RENDER_TARGET,
-    D3D11_RESOURCE_MISC_GDI_COMPATIBLE,
-    D3D11_USAGE_DEFAULT
+    D3D11CreateDevice, ID3D11Device, ID3D11Texture2D, D3D11_BIND_RENDER_TARGET,
+    D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_RESOURCE_MISC_GDI_COMPATIBLE, D3D11_SDK_VERSION,
+    D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
 };
-use winapi::shared::dxgi::{
-    IDXGISurface,
-    IID_IDXGISurface,
-};
-use winapi::shared::dxgitype::DXGI_SAMPLE_DESC;
-use winapi::shared::dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM;
-use winapi::um::d3dcommon::{
-    D3D_DRIVER_TYPE_HARDWARE,
-};
-use winapi::um::dcommon::{
-    D2D1_PIXEL_FORMAT,
-    D2D1_ALPHA_MODE_PREMULTIPLIED
-};
-use winapi::um::d2d1::{
-    ID2D1RenderTarget,
-    ID2D1GdiInteropRenderTarget,
-    D2D1_RENDER_TARGET_PROPERTIES,
-    D2D1_RENDER_TARGET_TYPE_DEFAULT,
-    D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,
-    D2D1_FEATURE_LEVEL_DEFAULT,
-    D2D1_DC_INITIALIZE_MODE_COPY
-};
-use winapi::um::wingdi::{
-    BLENDFUNCTION,
-    AC_SRC_ALPHA
-};
-use winapi::um::winuser::{
-    UpdateLayeredWindowIndirect,
-    UPDATELAYEREDWINDOWINFO,
-    ULW_ALPHA,
-};
-use direct2d::factory::Factory;
-use direct2d::render_target::{
-    DxgiSurfaceRenderTarget,
-    RenderTarget,
-};
+use winapi::um::d3dcommon::D3D_DRIVER_TYPE_HARDWARE;
+use winapi::um::dcommon::{D2D1_ALPHA_MODE_PREMULTIPLIED, D2D1_PIXEL_FORMAT};
+use winapi::um::wingdi::{AC_SRC_ALPHA, BLENDFUNCTION};
+use winapi::um::winuser::{UpdateLayeredWindowIndirect, ULW_ALPHA, UPDATELAYEREDWINDOWINFO};
+use winapi::Interface;
 
 use super::error::Error;
 
@@ -65,18 +32,20 @@ impl Direct3DDevice {
     pub fn new() -> Result<Self, Error> {
         let mut device: *mut ID3D11Device = null_mut();
 
-        Error::validate_hresult(unsafe { D3D11CreateDevice(
-            null_mut(),
-            D3D_DRIVER_TYPE_HARDWARE,
-            null_mut(),
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-            null_mut(),
-            0,
-            D3D11_SDK_VERSION,
-            &mut device,
-            null_mut(),
-            null_mut()   // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
-        ) })?;
+        Error::validate_hresult(unsafe {
+            D3D11CreateDevice(
+                null_mut(),
+                D3D_DRIVER_TYPE_HARDWARE,
+                null_mut(),
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                null_mut(),
+                0,
+                D3D11_SDK_VERSION,
+                &mut device,
+                null_mut(),
+                null_mut(), // TODO: Consider supplying a pointer to a ID3D11DeviceContext.
+            )
+        })?;
 
         Ok(Direct3DDevice { device })
     }
@@ -100,7 +69,7 @@ impl Drop for Direct3DDevice {
 
 pub struct Direct3DTexture {
     texture: *mut ID3D11Texture2D,
-    surface: *mut IDXGISurface
+    surface: *mut IDXGISurface,
 }
 
 impl Direct3DTexture {
@@ -116,26 +85,28 @@ impl Direct3DTexture {
             MipLevels: 1,
             SampleDesc: DXGI_SAMPLE_DESC {
                 Count: 1,
-                Quality: 0
+                Quality: 0,
             },
             MiscFlags: D3D11_RESOURCE_MISC_GDI_COMPATIBLE,
             CPUAccessFlags: 0,
-            Usage: D3D11_USAGE_DEFAULT
+            Usage: D3D11_USAGE_DEFAULT,
         };
-        Error::validate_hresult(unsafe { (*device).CreateTexture2D(
-            &desc,
-            null_mut(),
-            &mut texture
-        ) })?;
-        Error::validate_hresult(unsafe { (*texture).QueryInterface(
-            &IID_IDXGISurface,
-            &mut surface_ptr
-        ) })?;
+        Error::validate_hresult(unsafe {
+            (*device).CreateTexture2D(&desc, null_mut(), &mut texture)
+        })?;
+        Error::validate_hresult(unsafe {
+            (*texture).QueryInterface(&IID_IDXGISurface, &mut surface_ptr)
+        })?;
 
-        Ok(Direct3DTexture { texture, surface: surface_ptr as *mut IDXGISurface })
+        Ok(Direct3DTexture {
+            texture,
+            surface: surface_ptr as *mut IDXGISurface,
+        })
     }
 
-    pub fn create_d2d_layered_window_renderer(&mut self) -> Result<Direct2DLayeredWindowRenderer, Error> {
+    pub fn create_d2d_layered_window_renderer(
+        &mut self,
+    ) -> Result<Direct2DLayeredWindowRenderer, Error> {
         let factory = Factory::new().expect("Creating Direct2D factory failed");
         let (dpi_x, dpi_y) = factory.get_desktop_dpi();
         let props = D2D1_RENDER_TARGET_PROPERTIES {
@@ -157,8 +128,8 @@ impl Direct3DTexture {
             minLevel: D2D1_FEATURE_LEVEL_DEFAULT,
             pixelFormat: D2D1_PIXEL_FORMAT {
                 alphaMode: D2D1_ALPHA_MODE_PREMULTIPLIED,
-                format: DXGI_FORMAT_B8G8R8A8_UNORM
-            }
+                format: DXGI_FORMAT_B8G8R8A8_UNORM,
+            },
         };
         let mut target: *mut ID2D1RenderTarget = null_mut();
         unsafe {
@@ -166,7 +137,7 @@ impl Direct3DTexture {
             Error::validate_hresult((*raw_factory).CreateDxgiSurfaceRenderTarget(
                 self.surface,
                 &props,
-                &mut target
+                &mut target,
             ))?;
 
             // I *think* we're passing ownership of this target to the
@@ -175,14 +146,14 @@ impl Direct3DTexture {
             let dxgi_target = DxgiSurfaceRenderTarget::from_raw(target);
 
             let mut gdi_interop_ptr: *mut c_void = null_mut();
-            Error::validate_hresult((*target).QueryInterface(
-                &ID2D1GdiInteropRenderTarget::uuidof(),
-                &mut gdi_interop_ptr
-            ))?;
+            Error::validate_hresult(
+                (*target)
+                    .QueryInterface(&ID2D1GdiInteropRenderTarget::uuidof(), &mut gdi_interop_ptr),
+            )?;
 
             Ok(Direct2DLayeredWindowRenderer {
                 dxgi_target,
-                gdi_interop_target: gdi_interop_ptr as *mut ID2D1GdiInteropRenderTarget
+                gdi_interop_target: gdi_interop_ptr as *mut ID2D1GdiInteropRenderTarget,
             })
         }
     }
@@ -202,7 +173,7 @@ pub struct LayeredWindowUpdateOptions {
     pub x: i32,
     pub y: i32,
     pub width: u32,
-    pub height: u32
+    pub height: u32,
 }
 
 pub struct Direct2DLayeredWindowRenderer {
@@ -214,9 +185,11 @@ impl Direct2DLayeredWindowRenderer {
     pub fn draw_and_update_layered_window<F>(
         &mut self,
         update_options: &LayeredWindowUpdateOptions,
-        cb: F
+        cb: F,
     ) -> Result<(), Error>
-    where F: FnOnce(&mut DxgiSurfaceRenderTarget) -> Result<(), Error> {
+    where
+        F: FnOnce(&mut DxgiSurfaceRenderTarget) -> Result<(), Error>,
+    {
         self.dxgi_target.begin_draw();
         cb(&mut self.dxgi_target)?;
         self.update_layered_window(update_options)?;
@@ -224,29 +197,28 @@ impl Direct2DLayeredWindowRenderer {
         Ok(())
     }
 
-    pub fn update_layered_window(&self, update_options: &LayeredWindowUpdateOptions) -> Result<(), Error> {
+    pub fn update_layered_window(
+        &self,
+        update_options: &LayeredWindowUpdateOptions,
+    ) -> Result<(), Error> {
         let mut hdc: HDC = null_mut();
-        Error::validate_hresult(unsafe { (*self.gdi_interop_target).GetDC(
-            D2D1_DC_INITIALIZE_MODE_COPY,
-            &mut hdc
-        ) })?;
+        Error::validate_hresult(unsafe {
+            (*self.gdi_interop_target).GetDC(D2D1_DC_INITIALIZE_MODE_COPY, &mut hdc)
+        })?;
         let blendfunc = BLENDFUNCTION {
             SourceConstantAlpha: 255,
             AlphaFormat: AC_SRC_ALPHA,
             BlendFlags: 0,
-            BlendOp: 0
+            BlendOp: 0,
         };
-        let ppt_src = POINT {
-            x: 0,
-            y: 0
-        };
+        let ppt_src = POINT { x: 0, y: 0 };
         let ppt_dst = POINT {
             x: update_options.x,
-            y: update_options.y
+            y: update_options.y,
         };
         let psize = SIZE {
             cx: update_options.width as i32,
-            cy: update_options.height as i32
+            cy: update_options.height as i32,
         };
         let mut update_info = UPDATELAYEREDWINDOWINFO {
             cbSize: std::mem::size_of::<UPDATELAYEREDWINDOWINFO>() as u32,
@@ -258,7 +230,7 @@ impl Direct2DLayeredWindowRenderer {
             crKey: 0,
             pblend: &blendfunc,
             dwFlags: ULW_ALPHA,
-            prcDirty: null_mut()
+            prcDirty: null_mut(),
         };
         unsafe {
             if UpdateLayeredWindowIndirect(update_options.hwnd, &mut update_info) == 0 {
@@ -266,9 +238,7 @@ impl Direct2DLayeredWindowRenderer {
                 return Err(Error::from_winapi());
             }
         }
-        Error::validate_hresult(unsafe {
-            (*self.gdi_interop_target).ReleaseDC(null_mut())
-        })?;
+        Error::validate_hresult(unsafe { (*self.gdi_interop_target).ReleaseDC(null_mut()) })?;
         Ok(())
     }
 }

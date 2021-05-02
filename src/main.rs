@@ -4,20 +4,23 @@
 
 extern crate winapi;
 
-mod keyboard_hook;
-mod event_loop;
-mod windows_util;
-mod events;
-mod ui;
-mod transparent_window;
 mod directx;
 mod error;
+mod event_loop;
+mod events;
+mod keyboard_hook;
+mod transparent_window;
+mod ui;
+mod windows_util;
 
 fn run_enso() -> Result<(), Box<error::Error>> {
-    use std::sync::mpsc::{channel};
+    use std::sync::mpsc::channel;
 
     let d3d_device = directx::Direct3DDevice::new()?;
-    println!("Created Direct3D device with feature level 0x{:x}.", d3d_device.get_feature_level());
+    println!(
+        "Created Direct3D device with feature level 0x{:x}.",
+        d3d_device.get_feature_level()
+    );
 
     let eloop = event_loop::EventLoop::new();
     let (tx, rx) = channel();

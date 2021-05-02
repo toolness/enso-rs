@@ -1,7 +1,10 @@
 use std::ptr::null_mut;
-use winapi::um::winuser;
-use winapi::um::winuser::{MSG, SM_CXSCREEN, SM_CYSCREEN, GetSystemMetrics, SendInput, INPUT, INPUT_KEYBOARD, INPUT_u, KEYEVENTF_UNICODE};
 use winapi::shared::windef::POINT;
+use winapi::um::winuser;
+use winapi::um::winuser::{
+    GetSystemMetrics, INPUT_u, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_UNICODE, MSG,
+    SM_CXSCREEN, SM_CYSCREEN,
+};
 
 use super::error::Error;
 
@@ -17,7 +20,7 @@ pub fn create_blank_msg() -> MSG {
         wParam: 0,
         lParam: 0,
         time: 0,
-        pt: POINT { x: 0, y: 0 }
+        pt: POINT { x: 0, y: 0 },
     }
 }
 
@@ -31,7 +34,7 @@ pub fn send_unicode_keypress(value: &str) -> Result<(), Error> {
             ki.dwFlags = KEYEVENTF_UNICODE;
             let mut inp = INPUT {
                 type_: INPUT_KEYBOARD,
-                u
+                u,
             };
             let result = SendInput(1, &mut inp, std::mem::size_of_val(&inp) as i32);
             if result != 1 {
@@ -66,7 +69,7 @@ pub fn vkey_to_char(vk_code: i32) -> Option<char> {
     match vk_code {
         VK_0..=VK_9 | VK_A..=VK_Z => Some(char::from(vk_code as u8)),
         winuser::VK_SPACE => Some(' '),
-        _ => None
+        _ => None,
     }
 }
 

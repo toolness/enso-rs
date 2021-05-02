@@ -1,35 +1,27 @@
-use std::ptr::null_mut;
 use std::cell::RefCell;
+use std::ptr::null_mut;
+use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::thread;
-use std::sync::mpsc::channel;
-use winapi::um::winuser::{GetMessageA, PostThreadMessageA, WM_QUIT};
 use winapi::um::processthreadsapi::GetCurrentThreadId;
+use winapi::um::winuser::{GetMessageA, PostThreadMessageA, WM_QUIT};
 
 use winapi::um::winuser::{
-    SetWindowsHookExA,
-    UnhookWindowsHookEx,
-    CallNextHookEx,
-    KBDLLHOOKSTRUCT,
-    VK_CAPITAL,
-    WM_KEYUP,
-    WM_KEYDOWN,
-    WM_SYSKEYUP,
-    WM_SYSKEYDOWN,
-    WH_KEYBOARD_LL
+    CallNextHookEx, SetWindowsHookExA, UnhookWindowsHookEx, KBDLLHOOKSTRUCT, VK_CAPITAL,
+    WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
-use winapi::shared::windef::HHOOK;
 use winapi::shared::ntdef::NULL;
+use winapi::shared::windef::HHOOK;
 
-use super::events::{Event};
-use super::windows_util;
 use super::event_loop::kick_event_loop;
+use super::events::Event;
+use super::windows_util;
 
 struct HookState {
     sender: Sender<Event>,
     receiver_thread_id: u32,
-    in_quasimode: bool
+    in_quasimode: bool,
 }
 
 impl HookState {
@@ -68,18 +60,16 @@ impl HookState {
         };
         match possible_event {
             None => force_eat_key,
-            Some(event) => {
-                match self.sender.send(event) {
-                    Ok(()) => {
-                        kick_event_loop(self.receiver_thread_id);
-                        true
-                    },
-                    Err(e) => {
-                        println!("Error sending event: {:?}", e);
-                        false
-                    }
+            Some(event) => match self.sender.send(event) {
+                Ok(()) => {
+                    kick_event_loop(self.receiver_thread_id);
+                    true
                 }
-            }
+                Err(e) => {
+                    println!("Error sending event: {:?}", e);
+                    false
+                }
+            },
         }
     }
 }
@@ -95,9 +85,8 @@ pub struct KeyboardHook {
 
 impl KeyboardHook {
     fn install_in_thread(init_sender: Sender<u32>, sender: Sender<Event>, receiver_thread_id: u32) {
-        let hook_id = unsafe {
-            SetWindowsHookExA(WH_KEYBOARD_LL, Some(hook_callback), null_mut(), 0)
-        };
+        let hook_id =
+            unsafe { SetWindowsHookExA(WH_KEYBOARD_LL, Some(hook_callback), null_mut(), 0) };
         if hook_id == NULL as HHOOK {
             panic!("SetWindowsHookExA() failed!");
         }
@@ -105,7 +94,7 @@ impl KeyboardHook {
             *s.borrow_mut() = Some(HookState {
                 sender,
                 receiver_thread_id,
-                in_quasimode: false
+                in_quasimode: false,
             });
         });
         init_sender.send(unsafe { GetCurrentThreadId() }).unwrap();
@@ -146,11 +135,18 @@ impl KeyboardHook {
         let builder = thread::Builder::new()
             .name("Keyboard hook".into())
             .stack_size(32 * 1024);
-        let join_handle = Some(builder.spawn(move|| {
-            Self::install_in_thread(tx, sender, receiver_thread_id);
-        }).unwrap());
+        let join_handle = Some(
+            builder
+                .spawn(move || {
+                    Self::install_in_thread(tx, sender, receiver_thread_id);
+                })
+                .unwrap(),
+        );
         let thread_id = rx.recv().unwrap();
-        KeyboardHook { join_handle, thread_id }
+        KeyboardHook {
+            join_handle,
+            thread_id,
+        }
     }
 
     pub fn uninstall(self) {
@@ -168,7 +164,10 @@ impl Drop for KeyboardHook {
 
         let mut handle = None;
         std::mem::swap(&mut handle, &mut self.join_handle);
-        handle.expect("join_handle should contain a handle!").join().unwrap();
+        handle
+            .expect("join_handle should contain a handle!")
+            .join()
+            .unwrap();
     }
 }
 
@@ -184,8 +183,8 @@ unsafe extern "system" fn hook_callback(n_code: i32, w_param: usize, l_param: is
             None => {
                 println!("Expected hook state to exist!");
                 false
-            },
-            Some(ref mut state) => state.process_key(wm_type, vk_code)
+            }
+            Some(ref mut state) => state.process_key(wm_type, vk_code),
         });
         if eat_key {
             // We processed the keystroke, so don't pass it on to the underlying application.

@@ -1,14 +1,11 @@
-use std::fmt;
-use std::error;
-use std::ptr::null_mut;
-use winapi::shared::winerror::{HRESULT, S_OK};
-use winapi::shared::minwindef::DWORD;
-use winapi::um::errhandlingapi::GetLastError;
-use winapi::um::winbase::{
-    FormatMessageA,
-    FORMAT_MESSAGE_FROM_SYSTEM
-};
 use directwrite::error::DWriteError;
+use std::error;
+use std::fmt;
+use std::ptr::null_mut;
+use winapi::shared::minwindef::DWORD;
+use winapi::shared::winerror::{HRESULT, S_OK};
+use winapi::um::errhandlingapi::GetLastError;
+use winapi::um::winbase::{FormatMessageA, FORMAT_MESSAGE_FROM_SYSTEM};
 
 #[derive(Debug)]
 pub enum Error {
@@ -17,7 +14,7 @@ pub enum Error {
     WindowsAPIGeneric,
     Direct2DWithRenderTag(direct2d::error::Error, &'static str),
     DirectWrite(DWriteError),
-    Other(Box<dyn std::error::Error>)
+    Other(Box<dyn std::error::Error>),
 }
 
 impl Error {
@@ -47,7 +44,7 @@ impl Error {
                 0,
                 buf.as_mut_ptr() as *mut i8,
                 buf.len() as u32,
-                null_mut()
+                null_mut(),
             )
         };
         if result == 0 {
@@ -72,15 +69,16 @@ impl fmt::Display for Error {
         match self {
             Error::WindowsAPI(dword) => Self::include_winapi_error_desc(&mut out, *dword),
             // Apparently FormatMessage can also deal with HRESULTs too...
-            Error::WindowsCOM(hresult) => Self::include_winapi_error_desc(&mut out, *hresult as u32),
+            Error::WindowsCOM(hresult) => {
+                Self::include_winapi_error_desc(&mut out, *hresult as u32)
+            }
             _ => {}
         };
         out.finish()
     }
 }
 
-impl error::Error for Error {
-}
+impl error::Error for Error {}
 
 impl From<std::str::Utf8Error> for Error {
     fn from(err: std::str::Utf8Error) -> Error {
@@ -100,22 +98,28 @@ impl From<direct2d::error::Error> for Error {
     }
 }
 
-type D2DErrorWithRenderTag = (direct2d::error::Error, Option<direct2d::render_target::RenderTag>);
+type D2DErrorWithRenderTag = (
+    direct2d::error::Error,
+    Option<direct2d::render_target::RenderTag>,
+);
 
 impl From<D2DErrorWithRenderTag> for Error {
     fn from(err_with_tag: D2DErrorWithRenderTag) -> Error {
         let (err, opt_tag) = err_with_tag;
-        Error::Direct2DWithRenderTag(err, match opt_tag {
-            None => "",
-            Some(tag) => tag.loc
-        })
+        Error::Direct2DWithRenderTag(
+            err,
+            match opt_tag {
+                None => "",
+                Some(tag) => tag.loc,
+            },
+        )
     }
 }
 
 #[test]
 fn test_from_winapi_works() {
-    use winapi::um::winuser::GetClientRect;
     use winapi::shared::winerror::ERROR_INVALID_WINDOW_HANDLE;
+    use winapi::um::winuser::GetClientRect;
 
     let result = unsafe { GetClientRect(null_mut(), null_mut()) };
     assert_eq!(result, 0);
@@ -123,10 +127,13 @@ fn test_from_winapi_works() {
     match err {
         Error::WindowsAPI(dword) => {
             assert_eq!(dword, ERROR_INVALID_WINDOW_HANDLE);
-        },
-        _ => panic!()
+        }
+        _ => panic!(),
     }
-    assert_eq!(err.to_string(), "Error(WindowsAPI(1400), \"Invalid window handle.\\r\\n\")");
+    assert_eq!(
+        err.to_string(),
+        "Error(WindowsAPI(1400), \"Invalid window handle.\\r\\n\")"
+    );
 }
 
 #[test]
