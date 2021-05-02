@@ -19,6 +19,8 @@ const BG_COLOR: u32 = 0x00_00_00;
 const BG_ALPHA: f32 = 0.5;
 const TEXT_COLOR: u32 = 0xFF_FF_FF;
 const TEXT_ALPHA: f32 = 1.0;
+const HELP_BG_COLOR: u32 = 0x7F_98_45;
+const HELP_BG_ALPHA: f32 = 0.5;
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
@@ -28,6 +30,7 @@ const NOCMD_HELP: &'static str =
 struct Brushes {
     pub black: SolidColorBrush,
     pub white: SolidColorBrush,
+    pub help_bg: SolidColorBrush,
 }
 
 impl Brushes {
@@ -38,7 +41,14 @@ impl Brushes {
         let white = SolidColorBrush::create(&target)
             .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
             .build()?;
-        Ok(Brushes { black, white })
+        let help_bg = SolidColorBrush::create(&target)
+            .with_color(ColorF::uint_rgb(HELP_BG_COLOR, HELP_BG_ALPHA))
+            .build()?;
+        Ok(Brushes {
+            black,
+            white,
+            help_bg,
+        })
     }
 }
 
@@ -126,7 +136,7 @@ impl QuasimodeRenderer {
                 help_met.width() + PADDING_X2,
                 help_met.height() + PADDING_X2,
             );
-            target.fill_rectangle((0.0, 0.0, help_width, help_height), &brushes.black);
+            target.fill_rectangle((0.0, 0.0, help_width, help_height), &brushes.help_bg);
             target.draw_text_layout(
                 (PADDING, PADDING),
                 &help_layout,
