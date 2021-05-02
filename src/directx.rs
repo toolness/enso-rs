@@ -5,6 +5,7 @@ use winapi::shared::windef::{
     HWND,
     HDC,
     POINT,
+    SIZE,
 };
 use winapi::um::d3d11::{
     D3D11CreateDevice,
@@ -47,7 +48,6 @@ use winapi::um::winuser::{
     UpdateLayeredWindowIndirect,
     UPDATELAYEREDWINDOWINFO,
     ULW_ALPHA,
-    SIZE
 };
 use direct2d::factory::Factory;
 use direct2d::render_target::{
