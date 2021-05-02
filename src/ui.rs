@@ -23,6 +23,7 @@ const HELP_BG: ColorAlpha = (0x7F_98_45, 0.5);
 const HELP_FG: ColorAlpha = DEFAULT_FG;
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
+const SMALL_FONT_SIZE: f32 = 24.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
 const NOCMD_HELP: &'static str =
     "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
@@ -114,17 +115,15 @@ impl QuasimodeRenderer {
     pub fn draw(
         &mut self,
         cmd: &String,
+        help_text: &String,
         dw_factory: &Factory,
         text_format: &TextFormat,
+        small_text_format: &TextFormat,
     ) -> Result<(), Error> {
         let (screen_width, screen_height) = self.window.get_size();
-
-        // Eventually this will be dynamically generated based on the currently matched command.
-        let help_text = NOCMD_HELP;
-
         let help_layout = TextLayout::create(dw_factory)
             .with_text(help_text)
-            .with_font(text_format)
+            .with_font(small_text_format)
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
         let cmd_layout = TextLayout::create(dw_factory)
@@ -176,6 +175,7 @@ pub struct UserInterface {
     d3d_device: Direct3DDevice,
     dw_factory: Factory,
     text_format: TextFormat,
+    small_text_format: TextFormat,
     quasimode: Option<QuasimodeRenderer>,
     message: Option<TransparentMessageRenderer>,
 }
@@ -187,11 +187,16 @@ impl UserInterface {
             .with_family(FONT_FAMILY)
             .with_size(FONT_SIZE)
             .build()?;
+        let small_text_format = TextFormat::create(&dw_factory)
+            .with_family(FONT_FAMILY)
+            .with_size(SMALL_FONT_SIZE)
+            .build()?;
         Ok(UserInterface {
             cmd: String::new(),
             d3d_device,
             dw_factory,
             text_format,
+            small_text_format,
             quasimode: None,
             message: None,
         })
@@ -282,7 +287,16 @@ impl UserInterface {
         };
         if redraw_quasimode {
             if let Some(ref mut quasimode) = self.quasimode {
-                quasimode.draw(&self.cmd, &self.dw_factory, &self.text_format)?;
+                // Eventually this will be dynamically generated based on the currently matched command.
+                let help_text = String::from(NOCMD_HELP);
+
+                quasimode.draw(
+                    &self.cmd,
+                    &help_text,
+                    &self.dw_factory,
+                    &self.text_format,
+                    &self.small_text_format,
+                )?;
             }
         }
         return Ok(false);
