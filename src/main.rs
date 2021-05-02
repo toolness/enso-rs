@@ -1,3 +1,7 @@
+// The following will ensure that we won't spawn a Windows console
+// in release, but will in debug and testing.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 extern crate winapi;
 
 mod keyboard_hook;
