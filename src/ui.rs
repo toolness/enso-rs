@@ -17,9 +17,9 @@ type ColorAlpha = (u32, f32);
 
 const PADDING: f32 = 16.0;
 const PADDING_X2: f32 = PADDING * 2.0;
-const DEFAULT_BG: ColorAlpha = (0x00_00_00, 0.5);
+const DEFAULT_BG: ColorAlpha = (0x00_00_00, 0.75);
 const DEFAULT_FG: ColorAlpha = (0xFF_FF_FF, 1.0);
-const HELP_BG: ColorAlpha = (0x7F_98_45, 0.5);
+const HELP_BG: ColorAlpha = (0x7F_98_45, 0.75);
 const HELP_FG: ColorAlpha = DEFAULT_FG;
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
