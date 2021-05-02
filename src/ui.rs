@@ -13,41 +13,45 @@ use super::events::Event;
 use super::transparent_window::TransparentWindow;
 use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_to_char};
 
+type ColorAlpha = (u32, f32);
+
 const PADDING: f32 = 16.0;
 const PADDING_X2: f32 = PADDING * 2.0;
-const BG_COLOR: u32 = 0x00_00_00;
-const BG_ALPHA: f32 = 0.5;
-const TEXT_COLOR: u32 = 0xFF_FF_FF;
-const TEXT_ALPHA: f32 = 1.0;
-const HELP_BG_COLOR: u32 = 0x7F_98_45;
-const HELP_BG_ALPHA: f32 = 0.5;
+const DEFAULT_BG: ColorAlpha = (0x00_00_00, 0.5);
+const DEFAULT_FG: ColorAlpha = (0xFF_FF_FF, 1.0);
+const HELP_BG: ColorAlpha = (0x7F_98_45, 0.5);
+const HELP_FG: ColorAlpha = DEFAULT_FG;
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
 const NOCMD_HELP: &'static str =
     "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
 
+fn make_simple_brush<T: RenderTarget>(
+    target: &mut T,
+    color_alpha: ColorAlpha,
+) -> Result<SolidColorBrush, Error> {
+    let (color, alpha) = color_alpha;
+    let brush = SolidColorBrush::create(&target)
+        .with_color(ColorF::uint_rgb(color, alpha))
+        .build()?;
+    Ok(brush)
+}
+
 struct Brushes {
-    pub black: SolidColorBrush,
-    pub white: SolidColorBrush,
+    pub default_bg: SolidColorBrush,
+    pub default_fg: SolidColorBrush,
     pub help_bg: SolidColorBrush,
+    pub help_fg: SolidColorBrush,
 }
 
 impl Brushes {
     pub fn new<T: RenderTarget>(target: &mut T) -> Result<Self, Error> {
-        let black = SolidColorBrush::create(&target)
-            .with_color(ColorF::uint_rgb(BG_COLOR, BG_ALPHA))
-            .build()?;
-        let white = SolidColorBrush::create(&target)
-            .with_color(ColorF::uint_rgb(TEXT_COLOR, TEXT_ALPHA))
-            .build()?;
-        let help_bg = SolidColorBrush::create(&target)
-            .with_color(ColorF::uint_rgb(HELP_BG_COLOR, HELP_BG_ALPHA))
-            .build()?;
         Ok(Brushes {
-            black,
-            white,
-            help_bg,
+            default_bg: make_simple_brush(target, DEFAULT_BG)?,
+            default_fg: make_simple_brush(target, DEFAULT_FG)?,
+            help_bg: make_simple_brush(target, HELP_BG)?,
+            help_fg: make_simple_brush(target, HELP_FG)?,
         })
     }
 }
@@ -83,11 +87,11 @@ impl TransparentMessageRenderer {
         result.window.draw_and_update(move |target| {
             let brushes = Brushes::new(target)?;
             target.clear(ColorF::uint_rgb(0, 0.0));
-            target.fill_rectangle((0.0, 0.0, width, height), &brushes.black);
+            target.fill_rectangle((0.0, 0.0, width, height), &brushes.default_bg);
             target.draw_text_layout(
                 (PADDING, PADDING),
                 &text_layout,
-                &brushes.white,
+                &brushes.default_fg,
                 DrawTextOptions::NONE,
             );
             Ok(())
@@ -140,7 +144,7 @@ impl QuasimodeRenderer {
             target.draw_text_layout(
                 (PADDING, PADDING),
                 &help_layout,
-                &brushes.white,
+                &brushes.help_fg,
                 DrawTextOptions::NONE,
             );
             if cmd.len() > 0 {
@@ -152,12 +156,12 @@ impl QuasimodeRenderer {
                         cmd_met.width() + PADDING_X2,
                         help_height + cmd_met.height() + PADDING_X2,
                     ),
-                    &brushes.black,
+                    &brushes.default_bg,
                 );
                 target.draw_text_layout(
                     (PADDING, help_height + PADDING),
                     &cmd_layout,
-                    &brushes.white,
+                    &brushes.default_fg,
                     DrawTextOptions::NONE,
                 );
             }
