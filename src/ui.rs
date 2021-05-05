@@ -21,6 +21,7 @@ const DEFAULT_BG: ColorAlpha = (0x00_00_00, 0.75);
 const DEFAULT_FG: ColorAlpha = (0xFF_FF_FF, 1.0);
 const HELP_BG: ColorAlpha = (0x7F_98_45, 0.75);
 const HELP_FG: ColorAlpha = DEFAULT_FG;
+const AUTOCOMPLETED_FG: ColorAlpha = (0x7F_98_45, 1.0);
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const SMALL_FONT_SIZE: f32 = 24.0;
@@ -44,6 +45,7 @@ struct Brushes {
     pub default_fg: SolidColorBrush,
     pub help_bg: SolidColorBrush,
     pub help_fg: SolidColorBrush,
+    pub autocompleted_fg: SolidColorBrush,
 }
 
 impl Brushes {
@@ -53,6 +55,7 @@ impl Brushes {
             default_fg: make_simple_brush(target, DEFAULT_FG)?,
             help_bg: make_simple_brush(target, HELP_BG)?,
             help_fg: make_simple_brush(target, HELP_FG)?,
+            autocompleted_fg: make_simple_brush(target, AUTOCOMPLETED_FG)?,
         })
     }
 }
@@ -157,6 +160,10 @@ impl QuasimodeRenderer {
                     ),
                     &brushes.default_bg,
                 );
+                // The following can be used to change the color of individual letters:
+                // cmd_layout
+                //  .set_drawing_effect(&brushes.autocompleted_fg, 0..1)
+                //  .unwrap();
                 target.draw_text_layout(
                     (PADDING, help_height + PADDING),
                     &cmd_layout,
