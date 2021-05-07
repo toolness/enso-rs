@@ -136,12 +136,20 @@ mod tests {
     use super::*;
     use std::ops::Range;
 
+    fn strings<'a>(names: &[&str]) -> Vec<String> {
+        names.iter().map(|name| String::from(*name)).collect()
+    }
+
     fn sugg(name: &str, matches: Vec<Range<usize>>, value: usize) -> AutocompleteSuggestion<usize> {
         AutocompleteSuggestion {
             name: String::from(name),
             matches,
             value,
         }
+    }
+
+    fn cand(name: &'static str, matches: Vec<Range<usize>>) -> CandidateSuggestion {
+        CandidateSuggestion { name, matches }
     }
 
     #[test]
@@ -157,14 +165,26 @@ mod tests {
     }
 
     #[test]
-    fn test_get_best_candidates_returns_empty_vec() {
+    fn test_get_best_candidates_ignores_nonmatches() {
         assert_eq!(
-            get_best_candidates(
-                "bo",
-                [String::from("hi"), String::from("there")].iter(),
-                500
-            ),
+            get_best_candidates("bo", strings(&["hi", "there"]).iter(), 500),
             vec![]
+        );
+    }
+
+    #[test]
+    fn test_get_best_candidates_returns_sorted_matches() {
+        assert_eq!(
+            get_best_candidates("bo", strings(&["boop", "boink"]).iter(), 500),
+            vec![cand("boink", vec![0..2]), cand("boop", vec![0..2])]
+        );
+    }
+
+    #[test]
+    fn test_get_best_candidates_truncates_matches() {
+        assert_eq!(
+            get_best_candidates("bo", strings(&["boop", "boink"]).iter(), 1),
+            vec![cand("boink", vec![0..2])]
         );
     }
 
