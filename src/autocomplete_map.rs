@@ -9,7 +9,7 @@ pub struct AutocompleteSuggestion<T: Clone> {
     value: T,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 struct CandidateSuggestion<'a> {
     name: &'a str,
     matches: Vec<Range<usize>>,
@@ -69,8 +69,8 @@ fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
 
 fn get_best_candidates<'a, I: Iterator<Item = &'a String>>(
     input: &str,
-    max_results: usize,
     names: I,
+    max_results: usize,
 ) -> Vec<CandidateSuggestion<'a>> {
     let mut candidates: Vec<CandidateSuggestion> = Vec::new();
 
@@ -110,7 +110,7 @@ impl<T: Clone> AutocompleteMap<T> {
         max_results: usize,
     ) -> Vec<AutocompleteSuggestion<T>> {
         let mut results: Vec<AutocompleteSuggestion<T>> = Vec::with_capacity(max_results);
-        let candidates = get_best_candidates(input.as_ref(), max_results, self.entries.keys());
+        let candidates = get_best_candidates(input.as_ref(), self.entries.keys(), max_results);
 
         for candidate in candidates.iter() {
             let name = String::from(candidate.name);
@@ -153,6 +153,18 @@ mod tests {
         assert_eq!(
             am.autocomplete("bo", 500),
             vec![sugg("boink", vec![0..2], 3), sugg("boop", vec![0..2], 1)]
+        );
+    }
+
+    #[test]
+    fn test_get_best_candidates_returns_empty_vec() {
+        assert_eq!(
+            get_best_candidates(
+                "bo",
+                [String::from("hi"), String::from("there")].iter(),
+                500
+            ),
+            vec![]
         );
     }
 
