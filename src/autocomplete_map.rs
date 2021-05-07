@@ -1,3 +1,4 @@
+use std::cmp::{Ord, Ordering};
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -6,6 +7,26 @@ pub struct AutocompleteSuggestion<T: Clone> {
     name: String,
     matches: Vec<Range<usize>>,
     value: T,
+}
+
+#[derive(PartialEq, Eq)]
+struct CandidateSuggestion<'a> {
+    name: &'a str,
+    matches: Vec<Range<usize>>,
+}
+
+impl<'a> Ord for CandidateSuggestion<'a> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other)
+            .expect("CandidateSuggestion::partial_cmp should never return None")
+    }
+}
+
+impl<'a> PartialOrd for CandidateSuggestion<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        // TODO: Actually take the matches into account.
+        Some(self.name.cmp(other.name))
+    }
 }
 
 fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
@@ -66,18 +87,36 @@ impl<T: Clone> AutocompleteMap<T> {
         input: U,
         max_results: usize,
     ) -> Vec<AutocompleteSuggestion<T>> {
-        let mut results = Vec::with_capacity(max_results);
+        let mut results: Vec<AutocompleteSuggestion<T>> = Vec::with_capacity(max_results);
+        let mut candidates: Vec<CandidateSuggestion> = Vec::new();
         let input_string = input.into();
 
-        for (name, value) in self.entries.iter() {
+        for name in self.entries.keys() {
             let matches = get_matches(input_string.as_str(), name.as_str());
             if !matches.is_empty() {
-                results.push(AutocompleteSuggestion {
-                    name: name.clone(),
+                candidates.push(CandidateSuggestion {
+                    name: name.as_str(),
                     matches,
-                    value: value.clone(),
-                })
+                });
             }
+        }
+
+        candidates.sort();
+        let end = std::cmp::min(max_results, candidates.len());
+
+        for candidate in candidates[0..end].iter() {
+            let name = String::from(candidate.name);
+            let value = self
+                .entries
+                .get(&name)
+                .expect("We literally just iterated past this")
+                .clone();
+            let matches = candidate.matches.clone();
+            results.push(AutocompleteSuggestion {
+                name,
+                matches,
+                value,
+            })
         }
 
         results
@@ -101,8 +140,12 @@ mod tests {
     fn test_autocomplete_map_works() {
         let mut am = AutocompleteMap::new();
         am.insert("boop", 1);
-        am.insert("goop", 1);
-        assert_eq!(am.autocomplete("bo", 1), vec![sugg("boop", vec![0..2], 1)]);
+        am.insert("goop", 2);
+        am.insert("boink", 3);
+        assert_eq!(
+            am.autocomplete("bo", 500),
+            vec![sugg("boink", vec![0..2], 3), sugg("boop", vec![0..2], 1)]
+        );
     }
 
     #[test]
