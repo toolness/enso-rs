@@ -209,9 +209,9 @@ impl UserInterface {
         })
     }
 
-    pub fn show_message(&mut self, text: &str) -> Result<(), Error> {
+    pub fn show_message<S: Into<String>>(&mut self, text: S) -> Result<(), Error> {
         self.message = Some(TransparentMessageRenderer::new(
-            String::from(text),
+            text.into(),
             &mut self.d3d_device,
             &self.dw_factory,
             &self.text_format,
@@ -268,11 +268,10 @@ impl UserInterface {
                     "" => {}
                     _ => {
                         println!("Unknown command '{}'.", self.cmd);
-                        let msg = format!(
+                        self.show_message(format!(
                             "Alas, I am unfamiliar with the \u{201C}{}\u{201D} command.",
                             self.cmd
-                        );
-                        self.show_message(msg.as_str())?;
+                        ))?;
                     }
                 }
             }
