@@ -82,17 +82,17 @@ impl<T: Clone> AutocompleteMap<T> {
         self.entries.insert(name.into(), value);
     }
 
-    pub fn autocomplete<U: Into<String>>(
+    pub fn autocomplete<U: AsRef<str>>(
         &self,
         input: U,
         max_results: usize,
     ) -> Vec<AutocompleteSuggestion<T>> {
         let mut results: Vec<AutocompleteSuggestion<T>> = Vec::with_capacity(max_results);
         let mut candidates: Vec<CandidateSuggestion> = Vec::new();
-        let input_string = input.into();
+        let input_string = input.as_ref();
 
         for name in self.entries.keys() {
-            let matches = get_matches(input_string.as_str(), name.as_str());
+            let matches = get_matches(input_string, name.as_str());
             if !matches.is_empty() {
                 candidates.push(CandidateSuggestion {
                     name: name.as_str(),
