@@ -11,7 +11,7 @@ pub struct AutocompleteSuggestion<T: Clone> {
 fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
     let mut matches = vec![];
 
-    if name.len() == 0 {
+    if input.len() == 0 {
         return matches;
     }
 
@@ -86,7 +86,7 @@ impl<T: Clone> AutocompleteMap<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AutocompleteMap, AutocompleteSuggestion};
+    use super::*;
     use std::ops::Range;
 
     fn sugg(name: &str, matches: Vec<Range<usize>>, value: usize) -> AutocompleteSuggestion<usize> {
@@ -98,10 +98,26 @@ mod tests {
     }
 
     #[test]
-    fn test_it_works() {
+    fn test_autocomplete_map_works() {
         let mut am = AutocompleteMap::new();
         am.insert("boop", 1);
         am.insert("goop", 1);
         assert_eq!(am.autocomplete("bo", 1), vec![sugg("boop", vec![0..2], 1)]);
+    }
+
+    #[test]
+    fn test_get_matches_returns_empty_vec() {
+        assert_eq!(get_matches("boop", "goop"), vec![]);
+        assert_eq!(get_matches("", "goop"), vec![]);
+    }
+
+    #[test]
+    fn test_get_matches_returns_full_matches() {
+        assert_eq!(get_matches("boop", "boop"), vec![0..4]);
+    }
+
+    #[test]
+    fn test_get_matches_returns_multiple_matches() {
+        assert_eq!(get_matches("boop", "bogus ops"), vec![0..2, 6..8]);
     }
 }
