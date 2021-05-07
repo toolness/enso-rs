@@ -67,6 +67,28 @@ fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
     matches
 }
 
+fn get_best_candidates<'a, I: Iterator<Item = &'a String>>(
+    input: &str,
+    max_results: usize,
+    names: I,
+) -> Vec<CandidateSuggestion<'a>> {
+    let mut candidates: Vec<CandidateSuggestion> = Vec::new();
+
+    for name in names {
+        let matches = get_matches(input, name.as_str());
+        if !matches.is_empty() {
+            candidates.push(CandidateSuggestion {
+                name: name.as_str(),
+                matches,
+            });
+        }
+    }
+
+    candidates.sort();
+    candidates.truncate(max_results);
+    candidates
+}
+
 pub struct AutocompleteMap<T: Clone> {
     entries: HashMap<String, T>,
 }
@@ -88,23 +110,9 @@ impl<T: Clone> AutocompleteMap<T> {
         max_results: usize,
     ) -> Vec<AutocompleteSuggestion<T>> {
         let mut results: Vec<AutocompleteSuggestion<T>> = Vec::with_capacity(max_results);
-        let mut candidates: Vec<CandidateSuggestion> = Vec::new();
-        let input_string = input.as_ref();
+        let candidates = get_best_candidates(input.as_ref(), max_results, self.entries.keys());
 
-        for name in self.entries.keys() {
-            let matches = get_matches(input_string, name.as_str());
-            if !matches.is_empty() {
-                candidates.push(CandidateSuggestion {
-                    name: name.as_str(),
-                    matches,
-                });
-            }
-        }
-
-        candidates.sort();
-        let end = std::cmp::min(max_results, candidates.len());
-
-        for candidate in candidates[0..end].iter() {
+        for candidate in candidates.iter() {
             let name = String::from(candidate.name);
             let value = self
                 .entries
