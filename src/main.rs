@@ -4,6 +4,7 @@
 
 extern crate winapi;
 
+mod command;
 mod directx;
 mod error;
 mod event_loop;
