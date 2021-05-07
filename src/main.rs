@@ -4,6 +4,7 @@
 
 extern crate winapi;
 
+mod autocomplete_map;
 mod command;
 mod directx;
 mod error;
