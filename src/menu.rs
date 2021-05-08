@@ -10,6 +10,10 @@ impl<T> Menu<T> {
         self.entries.remove(self.selected_idx)
     }
 
+    pub fn selected_entry(&self) -> &T {
+        self.entries.get(self.selected_idx).unwrap()
+    }
+
     // https://depth-first.com/articles/2020/06/22/returning-rust-iterators/
     pub fn iter(&self) -> impl Iterator<Item = (&T, bool)> + '_ {
         self.entries

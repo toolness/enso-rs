@@ -6,7 +6,7 @@ use directwrite::factory::Factory;
 use directwrite::{TextFormat, TextLayout};
 use std::convert::TryFrom;
 use std::sync::mpsc::{Receiver, TryRecvError};
-use winapi::um::winuser::VK_BACK;
+use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::{Command, SimpleCommand};
@@ -32,7 +32,8 @@ const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const SMALL_FONT_SIZE: f32 = 24.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
-const NOCMD_HELP: &'static str =
+const NOCMD_HELP: &'static str = "No command matches your input.";
+const EMPTY_INPUT_HELP: &'static str =
     "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
 
 fn make_simple_brush<T: RenderTarget>(
@@ -329,13 +330,33 @@ impl UserInterface {
                         None
                     };
                     redraw_quasimode = true;
+                } else {
+                    match vk_code {
+                        VK_UP | VK_DOWN => {
+                            if let Some(menu) = &mut self.menu {
+                                redraw_quasimode = true;
+                                if vk_code == VK_UP {
+                                    menu.select_prev();
+                                } else {
+                                    menu.select_next();
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
                 }
             }
         };
         if redraw_quasimode {
             if let Some(ref mut quasimode) = self.quasimode {
-                // Eventually this will be dynamically generated based on the currently matched command.
-                let help_text = String::from(NOCMD_HELP);
+                let help_text: String = if let Some(menu) = &self.menu {
+                    let cmd_name = menu.selected_entry().value.name();
+                    format!("Run the command \u{201C}{}\u{201D}.", cmd_name)
+                } else if self.input.len() > 0 {
+                    String::from(NOCMD_HELP)
+                } else {
+                    String::from(EMPTY_INPUT_HELP)
+                };
 
                 quasimode.draw(
                     &self.input,
