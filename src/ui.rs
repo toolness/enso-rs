@@ -25,6 +25,7 @@ const DEFAULT_FG: ColorAlpha = (0xFF_FF_FF, 1.0);
 const HELP_BG: ColorAlpha = (0x7F_98_45, 0.75);
 const HELP_FG: ColorAlpha = DEFAULT_FG;
 const AUTOCOMPLETED_FG: ColorAlpha = (0x7F_98_45, 1.0);
+const UNSELECTED_INPUT_FG: ColorAlpha = (0xAF_BC_92, 1.0);
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const SMALL_FONT_SIZE: f32 = 24.0;
@@ -49,6 +50,7 @@ struct Brushes {
     pub help_bg: SolidColorBrush,
     pub help_fg: SolidColorBrush,
     pub autocompleted_fg: SolidColorBrush,
+    pub unselected_input_fg: SolidColorBrush,
 }
 
 impl Brushes {
@@ -59,6 +61,7 @@ impl Brushes {
             help_bg: make_simple_brush(target, HELP_BG)?,
             help_fg: make_simple_brush(target, HELP_FG)?,
             autocompleted_fg: make_simple_brush(target, AUTOCOMPLETED_FG)?,
+            unselected_input_fg: make_simple_brush(target, UNSELECTED_INPUT_FG)?,
         })
     }
 }
