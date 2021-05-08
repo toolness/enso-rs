@@ -1,3 +1,4 @@
+use super::autocomplete_map::AutocompleteMap;
 use super::error::Error;
 use super::ui::UserInterface;
 use dyn_clone::DynClone;
@@ -6,6 +7,8 @@ pub trait Command: DynClone {
     fn name(&self) -> String;
     fn execute(&mut self, ui: &mut UserInterface) -> Result<(), Error>;
 }
+
+dyn_clone::clone_trait_object!(Command);
 
 #[derive(Clone)]
 pub struct SimpleCommand<F: FnMut(&mut UserInterface) -> Result<(), Error> + Clone> {
@@ -37,18 +40,18 @@ impl<F: FnMut(&mut UserInterface) -> Result<(), Error> + Clone> Command for Simp
 }
 
 pub struct CommandRegistry {
-    commands: Vec<Box<dyn Command>>,
+    acm: AutocompleteMap<Box<dyn Command>>,
 }
 
 impl CommandRegistry {
     pub fn new() -> CommandRegistry {
         CommandRegistry {
-            commands: Vec::new(),
+            acm: AutocompleteMap::new(),
         }
     }
 
     pub fn register(&mut self, command: Box<dyn Command>) {
-        self.commands.push(command);
+        self.acm.insert(command.name(), command);
     }
 }
 
