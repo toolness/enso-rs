@@ -40,6 +40,7 @@ fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
     let mut curr_match: Option<Range<usize>> = None;
     let mut input_chars = input.chars();
     let mut input_char = input_chars.next().unwrap();
+    let mut input_chars_matched = 0;
 
     for name_char in name.chars() {
         if name_char == input_char {
@@ -47,6 +48,7 @@ fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
                 None => Some(name_idx..name_idx + 1),
                 Some(range) => Some(range.start..name_idx + 1),
             };
+            input_chars_matched += 1;
             if let Some(next_input_char) = input_chars.next() {
                 input_char = next_input_char;
             } else {
@@ -62,6 +64,10 @@ fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
 
     if let Some(match_) = curr_match {
         matches.push(match_);
+    }
+
+    if input_chars_matched != input.len() {
+        matches.clear();
     }
 
     matches
@@ -192,6 +198,11 @@ mod tests {
     fn test_get_matches_returns_empty_vec() {
         assert_eq!(get_matches("boop", "goop"), vec![]);
         assert_eq!(get_matches("", "goop"), vec![]);
+    }
+
+    #[test]
+    fn test_get_matches_only_works_when_all_chars_match() {
+        assert_eq!(get_matches("boop", "bop"), vec![]);
     }
 
     #[test]
