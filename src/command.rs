@@ -20,6 +20,10 @@ impl<F: FnMut(&mut UserInterface) -> Result<(), Error> + Clone> SimpleCommand<F>
             execute_: execute,
         }
     }
+
+    pub fn into_box(self) -> Box<SimpleCommand<F>> {
+        Box::new(self)
+    }
 }
 
 impl<F: FnMut(&mut UserInterface) -> Result<(), Error> + Clone> Command for SimpleCommand<F> {
@@ -49,10 +53,11 @@ impl CommandRegistry {
 }
 
 fn tada_command() -> Box<dyn Command> {
-    Box::new(SimpleCommand::new("tada", |ui| {
+    SimpleCommand::new("tada", |ui| {
         ui.type_char("🎉")?;
         Ok(())
-    }))
+    })
+    .into_box()
 }
 
 #[test]
@@ -60,6 +65,7 @@ fn test_simple_command_works() {
     let cmd = SimpleCommand::new("hi", |ui| {
         ui.show_message("HALLO")?;
         Ok(())
-    });
+    })
+    .into_box();
     let _cmd2 = cmd.clone();
 }
