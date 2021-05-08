@@ -1,15 +1,13 @@
+use std::convert::TryFrom;
+
 pub struct Menu<T> {
     entries: Vec<T>,
-    pub selected_idx: usize,
+    selected_idx: usize,
 }
 
 impl<T> Menu<T> {
-    pub fn into_selected_entry(mut self) -> Option<T> {
-        if self.selected_idx < self.entries.len() {
-            Some(self.entries.remove(self.selected_idx))
-        } else {
-            None
-        }
+    pub fn into_selected_entry(mut self) -> T {
+        self.entries.remove(self.selected_idx)
     }
 
     // https://depth-first.com/articles/2020/06/22/returning-rust-iterators/
@@ -21,7 +19,7 @@ impl<T> Menu<T> {
     }
 
     pub fn select_next(&mut self) {
-        if self.entries.len() > 0 && self.selected_idx < self.entries.len() - 1 {
+        if self.selected_idx < self.entries.len() - 1 {
             self.selected_idx += 1;
         } else {
             self.selected_idx = 0;
@@ -31,24 +29,30 @@ impl<T> Menu<T> {
     pub fn select_prev(&mut self) {
         if self.selected_idx > 0 {
             self.selected_idx -= 1;
-        } else if self.entries.len() > 0 {
+        } else {
             self.selected_idx = self.entries.len() - 1;
         }
     }
 }
 
-impl<T> From<Vec<T>> for Menu<T> {
-    fn from(entries: Vec<T>) -> Menu<T> {
-        Menu {
-            entries,
-            selected_idx: 0,
+impl<T> TryFrom<Vec<T>> for Menu<T> {
+    type Error = &'static str;
+
+    fn try_from(entries: Vec<T>) -> Result<Self, Self::Error> {
+        if entries.is_empty() {
+            Err("Cannot create empty menus!")
+        } else {
+            Ok(Menu {
+                entries,
+                selected_idx: 0,
+            })
         }
     }
 }
 
 #[test]
 fn test_it_works_with_filled_vec() {
-    let mut menu = Menu::from(vec![1, 2, 3]);
+    let mut menu = Menu::try_from(vec![1, 2, 3]).unwrap();
     assert_eq!(menu.selected_idx, 0);
     menu.select_next();
     assert_eq!(menu.selected_idx, 1);
@@ -67,15 +71,11 @@ fn test_it_works_with_filled_vec() {
 
     assert_eq!(menu_items, vec![(1, true), (2, false), (3, false),]);
 
-    assert_eq!(menu.into_selected_entry(), Some(1));
+    assert_eq!(menu.into_selected_entry(), 1);
 }
 
 #[test]
-fn test_it_works_with_empty_vec() {
-    let mut menu: Menu<i32> = Menu::from(vec![]);
-    menu.select_next();
-    assert_eq!(menu.selected_idx, 0);
-    menu.select_prev();
-    assert_eq!(menu.selected_idx, 0);
-    assert_eq!(menu.into_selected_entry(), None);
+fn test_try_from_fails_with_empty_vec() {
+    let menu = Menu::<usize>::try_from(vec![]);
+    assert_eq!(menu.is_err(), true);
 }

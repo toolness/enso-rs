@@ -4,10 +4,11 @@ use direct2d::math::ColorF;
 use direct2d::render_target::RenderTarget;
 use directwrite::factory::Factory;
 use directwrite::{TextFormat, TextLayout};
+use std::convert::TryFrom;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::VK_BACK;
 
-use super::autocomplete_map::AutocompleteMap;
+use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::{Command, SimpleCommand};
 use super::directx::Direct3DDevice;
 use super::error::Error;
@@ -18,6 +19,7 @@ use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_t
 
 type ColorAlpha = (u32, f32);
 
+const MAX_SUGGESTIONS: usize = 5;
 const PADDING: f32 = 16.0;
 const PADDING_X2: f32 = PADDING * 2.0;
 const DEFAULT_BG: ColorAlpha = (0x00_00_00, 0.75);
@@ -192,6 +194,7 @@ pub struct UserInterface {
     small_text_format: TextFormat,
     quasimode: Option<QuasimodeRenderer>,
     message: Option<TransparentMessageRenderer>,
+    menu: Option<Menu<AutocompleteSuggestion<Box<dyn Command>>>>,
     commands: AutocompleteMap<Box<dyn Command>>,
 }
 
@@ -215,6 +218,7 @@ impl UserInterface {
             small_text_format,
             quasimode: None,
             message: None,
+            menu: None,
             commands: AutocompleteMap::new(),
         };
         ui.add_builtin_commands();
@@ -291,22 +295,19 @@ impl UserInterface {
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
                 self.quasimode = None;
-                if self.input.len() > 0 {
-                    let suggs = self.commands.autocomplete(&self.input, 1);
-                    let menu = Menu::from(suggs);
-                    if let Some(mut sugg) = menu.into_selected_entry() {
-                        sugg.value.execute(self)?;
-                    } else {
-                        println!("Unknown command '{}'.", self.input);
-                        self.show_message(format!(
-                            "Alas, I am unfamiliar with the \u{201C}{}\u{201D} command.",
-                            self.input
-                        ))?;
-                    }
+                if let Some(menu) = self.menu.take() {
+                    let mut sugg = menu.into_selected_entry();
+                    sugg.value.execute(self)?;
+                } else if self.input.len() > 0 {
+                    println!("Unknown command '{}'.", self.input);
+                    self.show_message(format!(
+                        "Alas, I am unfamiliar with the \u{201C}{}\u{201D} command.",
+                        self.input
+                    ))?;
                 }
             }
             Event::Keypress(vk_code) => {
-                redraw_quasimode = if vk_code == VK_BACK {
+                let input_changed = if vk_code == VK_BACK {
                     match self.input.pop() {
                         None => false,
                         Some(_) => true,
@@ -319,6 +320,16 @@ impl UserInterface {
                 } else {
                     false
                 };
+
+                if input_changed {
+                    let suggs = self.commands.autocomplete(&self.input, MAX_SUGGESTIONS);
+                    self.menu = if let Ok(menu) = Menu::try_from(suggs) {
+                        Some(menu)
+                    } else {
+                        None
+                    };
+                    redraw_quasimode = true;
+                }
             }
         };
         if redraw_quasimode {
