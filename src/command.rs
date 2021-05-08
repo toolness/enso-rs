@@ -1,4 +1,3 @@
-use super::autocomplete_map::AutocompleteMap;
 use super::error::Error;
 use super::ui::UserInterface;
 use dyn_clone::DynClone;
@@ -37,30 +36,6 @@ impl<F: FnMut(&mut UserInterface) -> Result<(), Error> + Clone> Command for Simp
     fn execute(&mut self, ui: &mut UserInterface) -> Result<(), Error> {
         (self.execute_)(ui)
     }
-}
-
-pub struct CommandRegistry {
-    acm: AutocompleteMap<Box<dyn Command>>,
-}
-
-impl CommandRegistry {
-    pub fn new() -> CommandRegistry {
-        CommandRegistry {
-            acm: AutocompleteMap::new(),
-        }
-    }
-
-    pub fn register(&mut self, command: Box<dyn Command>) {
-        self.acm.insert(command.name(), command);
-    }
-}
-
-fn tada_command() -> Box<dyn Command> {
-    SimpleCommand::new("tada", |ui| {
-        ui.type_char("🎉")?;
-        Ok(())
-    })
-    .into_box()
 }
 
 #[test]

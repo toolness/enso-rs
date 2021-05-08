@@ -7,9 +7,12 @@ use directwrite::{TextFormat, TextLayout};
 use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::VK_BACK;
 
+use super::autocomplete_map::AutocompleteMap;
+use super::command::{Command, SimpleCommand};
 use super::directx::Direct3DDevice;
 use super::error::Error;
 use super::events::Event;
+use super::menu::Menu;
 use super::transparent_window::TransparentWindow;
 use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_to_char};
 
@@ -178,13 +181,15 @@ impl QuasimodeRenderer {
 }
 
 pub struct UserInterface {
-    cmd: String,
+    input: String,
+    should_quit: bool,
     d3d_device: Direct3DDevice,
     dw_factory: Factory,
     text_format: TextFormat,
     small_text_format: TextFormat,
     quasimode: Option<QuasimodeRenderer>,
     message: Option<TransparentMessageRenderer>,
+    commands: AutocompleteMap<Box<dyn Command>>,
 }
 
 impl UserInterface {
@@ -198,15 +203,39 @@ impl UserInterface {
             .with_family(FONT_FAMILY)
             .with_size(SMALL_FONT_SIZE)
             .build()?;
-        Ok(UserInterface {
-            cmd: String::new(),
+        let mut ui = UserInterface {
+            input: String::new(),
+            should_quit: false,
             d3d_device,
             dw_factory,
             text_format,
             small_text_format,
             quasimode: None,
             message: None,
-        })
+            commands: AutocompleteMap::new(),
+        };
+        ui.add_builtin_commands();
+        Ok(ui)
+    }
+
+    fn add_builtin_commands(&mut self) {
+        self.add_command(
+            SimpleCommand::new("help", |ui| {
+                ui.show_message("Sorry, still need to implement help!")
+            })
+            .into_box(),
+        );
+
+        self.add_command(SimpleCommand::new("quit", |ui| ui.quit()).into_box());
+    }
+
+    pub fn add_command(&mut self, command: Box<dyn Command>) {
+        self.commands.insert(command.name(), command);
+    }
+
+    pub fn quit(&mut self) -> Result<(), Error> {
+        self.should_quit = true;
+        Ok(())
     }
 
     pub fn show_message<S: Into<String>>(&mut self, text: S) -> Result<(), Error> {
@@ -252,38 +281,36 @@ impl UserInterface {
         match event {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
-                self.cmd.clear();
+                self.input.clear();
                 self.quasimode = Some(QuasimodeRenderer::new(&mut self.d3d_device)?);
                 redraw_quasimode = true;
             }
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
                 self.quasimode = None;
-                match self.cmd.as_str() {
-                    "quit" => return Ok(true),
-                    "tada" => self.type_char("🎉")?,
-                    "help" => {
-                        self.show_message("Sorry, still need to implement help!")?;
-                    }
-                    "" => {}
-                    _ => {
-                        println!("Unknown command '{}'.", self.cmd);
+                if self.input.len() > 0 {
+                    let suggs = self.commands.autocomplete(&self.input, 1);
+                    let menu = Menu::from(suggs);
+                    if let Some(mut sugg) = menu.into_selected_entry() {
+                        sugg.value.execute(self)?;
+                    } else {
+                        println!("Unknown command '{}'.", self.input);
                         self.show_message(format!(
                             "Alas, I am unfamiliar with the \u{201C}{}\u{201D} command.",
-                            self.cmd
+                            self.input
                         ))?;
                     }
                 }
             }
             Event::Keypress(vk_code) => {
                 redraw_quasimode = if vk_code == VK_BACK {
-                    match self.cmd.pop() {
+                    match self.input.pop() {
                         None => false,
                         Some(_) => true,
                     }
                 } else if let Some(ch) = vkey_to_char(vk_code) {
                     for lch in ch.to_lowercase() {
-                        self.cmd.push(lch);
+                        self.input.push(lch);
                     }
                     true
                 } else {
@@ -297,7 +324,7 @@ impl UserInterface {
                 let help_text = String::from(NOCMD_HELP);
 
                 quasimode.draw(
-                    &self.cmd,
+                    &self.input,
                     &help_text,
                     &self.dw_factory,
                     &self.text_format,
@@ -305,6 +332,6 @@ impl UserInterface {
                 )?;
             }
         }
-        return Ok(false);
+        return Ok(self.should_quit);
     }
 }

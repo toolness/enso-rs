@@ -4,9 +4,9 @@ use std::ops::Range;
 
 #[derive(Debug, PartialEq)]
 pub struct AutocompleteSuggestion<T: Clone> {
-    name: String,
-    matches: Vec<Range<usize>>,
-    value: T,
+    pub name: String,
+    pub matches: Vec<Range<usize>>,
+    pub value: T,
 }
 
 #[derive(Debug, PartialEq, Eq)]

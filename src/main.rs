@@ -16,6 +16,16 @@ mod transparent_window;
 mod ui;
 mod windows_util;
 
+use command::{Command, SimpleCommand};
+
+fn tada_command() -> Box<dyn Command> {
+    SimpleCommand::new("tada", |ui| {
+        ui.type_char("🎉")?;
+        Ok(())
+    })
+    .into_box()
+}
+
 fn run_enso() -> Result<(), Box<error::Error>> {
     use std::sync::mpsc::channel;
 
@@ -30,6 +40,8 @@ fn run_enso() -> Result<(), Box<error::Error>> {
 
     let keyhook = keyboard_hook::KeyboardHook::install(tx, eloop.get_thread_id());
     let mut ui = ui::UserInterface::new(d3d_device)?;
+
+    ui.add_command(tada_command());
 
     ui.show_message("Welcome to Enso!")?;
 
