@@ -21,7 +21,7 @@ impl<F: FnMut(&mut UserInterface) -> Result<(), Error> + Clone> SimpleCommand<F>
         }
     }
 
-    pub fn into_box(self) -> Box<SimpleCommand<F>> {
+    pub fn into_box(self) -> Box<Self> {
         Box::new(self)
     }
 }
