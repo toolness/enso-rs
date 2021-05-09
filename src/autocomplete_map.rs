@@ -24,7 +24,18 @@ impl<'a> Ord for CandidateSuggestion<'a> {
 
 impl<'a> PartialOrd for CandidateSuggestion<'a> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // TODO: Actually take the matches into account.
+        // Theoretically we should be able to just unwrap the first match, since
+        // there has to be at least one, but we'll play it safe...
+        if let Some(my_first_match) = self.matches.get(0) {
+            if let Some(other_first_match) = other.matches.get(0) {
+                let match_start_cmp = my_first_match.start.cmp(&other_first_match.start);
+                if match_start_cmp != Ordering::Equal {
+                    // Prefer the suggestion with the earliest matching character.
+                    return Some(match_start_cmp);
+                }
+            }
+        }
+        // Otherwise, sort the suggestions lexicographically.
         Some(self.name.cmp(other.name))
     }
 }
@@ -179,7 +190,15 @@ mod tests {
     }
 
     #[test]
-    fn test_get_best_candidates_returns_sorted_matches() {
+    fn test_get_best_candidates_returns_suggs_sorted_by_earliest_char_match() {
+        assert_eq!(
+            get_best_candidates("t", strings(&["quit", "tada"]).iter(), 500),
+            vec![cand("tada", vec![0..1]), cand("quit", vec![3..4])]
+        );
+    }
+
+    #[test]
+    fn test_get_best_candidates_returns_lexicographically_sorted_matches() {
         assert_eq!(
             get_best_candidates("bo", strings(&["boop", "boink"]).iter(), 500),
             vec![cand("boink", vec![0..2]), cand("boop", vec![0..2])]
