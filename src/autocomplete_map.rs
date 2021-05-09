@@ -10,6 +10,9 @@ pub struct AutocompleteSuggestion<T: Clone> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// An internal struct representing a potential autocomplete suggestion,
+/// using borrowing and ignoring non-critical fields to ensure that it can
+/// be created in a lightweight way.
 struct CandidateSuggestion<'a> {
     name: &'a str,
     matches: Vec<Range<usize>>,
