@@ -19,11 +19,7 @@ mod windows_util;
 use command::{Command, SimpleCommand};
 
 fn tada_command() -> Box<dyn Command> {
-    SimpleCommand::new("tada", |ui| {
-        ui.type_char("🎉")?;
-        Ok(())
-    })
-    .into_box()
+    SimpleCommand::new("tada", |ui| ui.type_char("🎉")).into_box()
 }
 
 fn run_enso() -> Result<(), Box<error::Error>> {
