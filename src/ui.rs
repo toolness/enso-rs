@@ -5,6 +5,7 @@ use direct2d::render_target::RenderTarget;
 use directwrite::factory::Factory;
 use directwrite::{TextFormat, TextLayout};
 use std::convert::TryFrom;
+use std::ops::Range;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
@@ -126,7 +127,8 @@ impl QuasimodeRenderer {
 
     pub fn draw(
         &mut self,
-        cmd: &String,
+        input: &String,
+        optional_menu: &Option<Menu<AutocompleteSuggestion<Box<dyn Command>>>>,
         help_text: &String,
         dw_factory: &Factory,
         text_format: &TextFormat,
@@ -139,10 +141,21 @@ impl QuasimodeRenderer {
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
         let cmd_layout = TextLayout::create(dw_factory)
-            .with_text(cmd)
+            .with_text(input)
             .with_font(text_format)
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
+        let mut menu_layouts: Vec<(TextLayout, bool, Vec<Range<usize>>)> = vec![];
+        if let Some(menu) = optional_menu {
+            for (sugg, is_selected) in menu.iter() {
+                let menu_layout = TextLayout::create(dw_factory)
+                    .with_text(sugg.name.as_ref())
+                    .with_font(text_format)
+                    .with_size(screen_width as f32, screen_height as f32)
+                    .build()?;
+                menu_layouts.push((menu_layout, is_selected, sugg.matches.clone()));
+            }
+        }
         self.window.draw_and_update(move |target| {
             let brushes = Brushes::new(target)?;
             target.clear(ColorF::uint_rgb(0, 0.0));
@@ -158,27 +171,53 @@ impl QuasimodeRenderer {
                 &brushes.help_fg,
                 DrawTextOptions::NONE,
             );
-            if cmd.len() > 0 {
-                let cmd_met = cmd_layout.get_metrics();
-                target.fill_rectangle(
-                    (
-                        0.0,
-                        help_height,
-                        cmd_met.width() + PADDING_X2,
-                        help_height + cmd_met.height() + PADDING_X2,
-                    ),
-                    &brushes.default_bg,
-                );
-                // The following can be used to change the color of individual letters:
-                // cmd_layout
-                //  .set_drawing_effect(&brushes.autocompleted_fg, 0..1)
-                //  .unwrap();
-                target.draw_text_layout(
-                    (PADDING, help_height + PADDING),
-                    &cmd_layout,
-                    &brushes.default_fg,
-                    DrawTextOptions::NONE,
-                );
+            if menu_layouts.len() > 0 {
+                let mut y = help_height;
+                for (menu_layout, is_selected, matches) in menu_layouts {
+                    let menu_met = menu_layout.get_metrics();
+                    let new_y = y + menu_met.height() + PADDING_X2;
+                    target.fill_rectangle(
+                        (0.0, y, menu_met.width() + PADDING_X2, new_y),
+                        &brushes.default_bg,
+                    );
+                    for input_match in matches {
+                        let brush = if is_selected {
+                            &brushes.default_fg
+                        } else {
+                            &brushes.unselected_input_fg
+                        };
+                        let u32_match = (input_match.start as u32)..(input_match.end as u32);
+                        menu_layout
+                            .set_drawing_effect(brush, u32_match)
+                            .expect("setting brush for input highlight should work");
+                    }
+                    target.draw_text_layout(
+                        (PADDING, y + PADDING),
+                        &menu_layout,
+                        &brushes.autocompleted_fg,
+                        DrawTextOptions::NONE,
+                    );
+                    y = new_y;
+                }
+            } else {
+                if input.len() > 0 {
+                    let cmd_met = cmd_layout.get_metrics();
+                    target.fill_rectangle(
+                        (
+                            0.0,
+                            help_height,
+                            cmd_met.width() + PADDING_X2,
+                            help_height + cmd_met.height() + PADDING_X2,
+                        ),
+                        &brushes.default_bg,
+                    );
+                    target.draw_text_layout(
+                        (PADDING, help_height + PADDING),
+                        &cmd_layout,
+                        &brushes.default_fg,
+                        DrawTextOptions::NONE,
+                    );
+                }
             }
             Ok(())
         })?;
@@ -360,6 +399,7 @@ impl UserInterface {
 
                 quasimode.draw(
                     &self.input,
+                    &self.menu,
                     &help_text,
                     &self.dw_factory,
                     &self.text_format,
