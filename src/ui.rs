@@ -4,17 +4,23 @@ use direct2d::math::ColorF;
 use direct2d::render_target::RenderTarget;
 use directwrite::factory::Factory;
 use directwrite::{TextFormat, TextLayout};
+use std::convert::TryFrom;
+use std::ops::Range;
 use std::sync::mpsc::{Receiver, TryRecvError};
-use winapi::um::winuser::VK_BACK;
+use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
+use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
+use super::command::{Command, SimpleCommand};
 use super::directx::Direct3DDevice;
 use super::error::Error;
 use super::events::Event;
+use super::menu::Menu;
 use super::transparent_window::TransparentWindow;
 use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_to_char};
 
 type ColorAlpha = (u32, f32);
 
+const MAX_SUGGESTIONS: usize = 5;
 const PADDING: f32 = 16.0;
 const PADDING_X2: f32 = PADDING * 2.0;
 const DEFAULT_BG: ColorAlpha = (0x00_00_00, 0.75);
@@ -22,11 +28,13 @@ const DEFAULT_FG: ColorAlpha = (0xFF_FF_FF, 1.0);
 const HELP_BG: ColorAlpha = (0x7F_98_45, 0.75);
 const HELP_FG: ColorAlpha = DEFAULT_FG;
 const AUTOCOMPLETED_FG: ColorAlpha = (0x7F_98_45, 1.0);
+const UNSELECTED_INPUT_FG: ColorAlpha = (0xAF_BC_92, 1.0);
 const FONT_FAMILY: &'static str = "Georgia";
 const FONT_SIZE: f32 = 48.0;
 const SMALL_FONT_SIZE: f32 = 24.0;
 const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
-const NOCMD_HELP: &'static str =
+const NOCMD_HELP: &'static str = "No command matches your input.";
+const EMPTY_INPUT_HELP: &'static str =
     "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
 
 fn make_simple_brush<T: RenderTarget>(
@@ -46,6 +54,7 @@ struct Brushes {
     pub help_bg: SolidColorBrush,
     pub help_fg: SolidColorBrush,
     pub autocompleted_fg: SolidColorBrush,
+    pub unselected_input_fg: SolidColorBrush,
 }
 
 impl Brushes {
@@ -56,6 +65,7 @@ impl Brushes {
             help_bg: make_simple_brush(target, HELP_BG)?,
             help_fg: make_simple_brush(target, HELP_FG)?,
             autocompleted_fg: make_simple_brush(target, AUTOCOMPLETED_FG)?,
+            unselected_input_fg: make_simple_brush(target, UNSELECTED_INPUT_FG)?,
         })
     }
 }
@@ -117,7 +127,8 @@ impl QuasimodeRenderer {
 
     pub fn draw(
         &mut self,
-        cmd: &String,
+        input: &String,
+        optional_menu: &Option<Menu<AutocompleteSuggestion<Box<dyn Command>>>>,
         help_text: &String,
         dw_factory: &Factory,
         text_format: &TextFormat,
@@ -130,10 +141,21 @@ impl QuasimodeRenderer {
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
         let cmd_layout = TextLayout::create(dw_factory)
-            .with_text(cmd)
+            .with_text(input)
             .with_font(text_format)
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
+        let mut menu_layouts: Vec<(TextLayout, bool, Vec<Range<usize>>)> = vec![];
+        if let Some(menu) = optional_menu {
+            for (sugg, is_selected) in menu.iter() {
+                let menu_layout = TextLayout::create(dw_factory)
+                    .with_text(sugg.name.as_ref())
+                    .with_font(text_format)
+                    .with_size(screen_width as f32, screen_height as f32)
+                    .build()?;
+                menu_layouts.push((menu_layout, is_selected, sugg.matches.clone()));
+            }
+        }
         self.window.draw_and_update(move |target| {
             let brushes = Brushes::new(target)?;
             target.clear(ColorF::uint_rgb(0, 0.0));
@@ -149,27 +171,53 @@ impl QuasimodeRenderer {
                 &brushes.help_fg,
                 DrawTextOptions::NONE,
             );
-            if cmd.len() > 0 {
-                let cmd_met = cmd_layout.get_metrics();
-                target.fill_rectangle(
-                    (
-                        0.0,
-                        help_height,
-                        cmd_met.width() + PADDING_X2,
-                        help_height + cmd_met.height() + PADDING_X2,
-                    ),
-                    &brushes.default_bg,
-                );
-                // The following can be used to change the color of individual letters:
-                // cmd_layout
-                //  .set_drawing_effect(&brushes.autocompleted_fg, 0..1)
-                //  .unwrap();
-                target.draw_text_layout(
-                    (PADDING, help_height + PADDING),
-                    &cmd_layout,
-                    &brushes.default_fg,
-                    DrawTextOptions::NONE,
-                );
+            if menu_layouts.len() > 0 {
+                let mut y = help_height;
+                for (menu_layout, is_selected, matches) in menu_layouts {
+                    let menu_met = menu_layout.get_metrics();
+                    let new_y = y + menu_met.height() + PADDING_X2;
+                    target.fill_rectangle(
+                        (0.0, y, menu_met.width() + PADDING_X2, new_y),
+                        &brushes.default_bg,
+                    );
+                    for input_match in matches {
+                        let brush = if is_selected {
+                            &brushes.default_fg
+                        } else {
+                            &brushes.unselected_input_fg
+                        };
+                        let u32_match = (input_match.start as u32)..(input_match.end as u32);
+                        menu_layout
+                            .set_drawing_effect(brush, u32_match)
+                            .expect("setting brush for input highlight should work");
+                    }
+                    target.draw_text_layout(
+                        (PADDING, y + PADDING),
+                        &menu_layout,
+                        &brushes.autocompleted_fg,
+                        DrawTextOptions::NONE,
+                    );
+                    y = new_y;
+                }
+            } else {
+                if input.len() > 0 {
+                    let cmd_met = cmd_layout.get_metrics();
+                    target.fill_rectangle(
+                        (
+                            0.0,
+                            help_height,
+                            cmd_met.width() + PADDING_X2,
+                            help_height + cmd_met.height() + PADDING_X2,
+                        ),
+                        &brushes.default_bg,
+                    );
+                    target.draw_text_layout(
+                        (PADDING, help_height + PADDING),
+                        &cmd_layout,
+                        &brushes.default_fg,
+                        DrawTextOptions::NONE,
+                    );
+                }
             }
             Ok(())
         })?;
@@ -178,13 +226,16 @@ impl QuasimodeRenderer {
 }
 
 pub struct UserInterface {
-    cmd: String,
+    input: String,
+    should_quit: bool,
     d3d_device: Direct3DDevice,
     dw_factory: Factory,
     text_format: TextFormat,
     small_text_format: TextFormat,
     quasimode: Option<QuasimodeRenderer>,
     message: Option<TransparentMessageRenderer>,
+    menu: Option<Menu<AutocompleteSuggestion<Box<dyn Command>>>>,
+    commands: AutocompleteMap<Box<dyn Command>>,
 }
 
 impl UserInterface {
@@ -198,15 +249,40 @@ impl UserInterface {
             .with_family(FONT_FAMILY)
             .with_size(SMALL_FONT_SIZE)
             .build()?;
-        Ok(UserInterface {
-            cmd: String::new(),
+        let mut ui = UserInterface {
+            input: String::new(),
+            should_quit: false,
             d3d_device,
             dw_factory,
             text_format,
             small_text_format,
             quasimode: None,
             message: None,
-        })
+            menu: None,
+            commands: AutocompleteMap::new(),
+        };
+        ui.add_builtin_commands();
+        Ok(ui)
+    }
+
+    fn add_builtin_commands(&mut self) {
+        self.add_command(
+            SimpleCommand::new("help", |ui| {
+                ui.show_message("Sorry, still need to implement help!")
+            })
+            .into_box(),
+        );
+
+        self.add_command(SimpleCommand::new("quit", |ui| ui.quit()).into_box());
+    }
+
+    pub fn add_command(&mut self, command: Box<dyn Command>) {
+        self.commands.insert(command.name(), command);
+    }
+
+    pub fn quit(&mut self) -> Result<(), Error> {
+        self.should_quit = true;
+        Ok(())
     }
 
     pub fn show_message<S: Into<String>>(&mut self, text: S) -> Result<(), Error> {
@@ -252,52 +328,78 @@ impl UserInterface {
         match event {
             Event::QuasimodeStart => {
                 println!("Starting quasimode.");
-                self.cmd.clear();
+                self.input.clear();
                 self.quasimode = Some(QuasimodeRenderer::new(&mut self.d3d_device)?);
                 redraw_quasimode = true;
             }
             Event::QuasimodeEnd => {
                 println!("Ending quasimode.");
                 self.quasimode = None;
-                match self.cmd.as_str() {
-                    "quit" => return Ok(true),
-                    "tada" => self.type_char("🎉")?,
-                    "help" => {
-                        self.show_message("Sorry, still need to implement help!")?;
-                    }
-                    "" => {}
-                    _ => {
-                        println!("Unknown command '{}'.", self.cmd);
-                        self.show_message(format!(
-                            "Alas, I am unfamiliar with the \u{201C}{}\u{201D} command.",
-                            self.cmd
-                        ))?;
-                    }
+                if let Some(menu) = self.menu.take() {
+                    let mut sugg = menu.into_selected_entry();
+                    sugg.value.execute(self)?;
+                } else if self.input.len() > 0 {
+                    println!("Unknown command '{}'.", self.input);
+                    self.show_message(format!(
+                        "Alas, I am unfamiliar with the \u{201C}{}\u{201D} command.",
+                        self.input
+                    ))?;
                 }
             }
             Event::Keypress(vk_code) => {
-                redraw_quasimode = if vk_code == VK_BACK {
-                    match self.cmd.pop() {
+                let input_changed = if vk_code == VK_BACK {
+                    match self.input.pop() {
                         None => false,
                         Some(_) => true,
                     }
                 } else if let Some(ch) = vkey_to_char(vk_code) {
                     for lch in ch.to_lowercase() {
-                        self.cmd.push(lch);
+                        self.input.push(lch);
                     }
                     true
                 } else {
                     false
                 };
+
+                if input_changed {
+                    let suggs = self.commands.autocomplete(&self.input, MAX_SUGGESTIONS);
+                    self.menu = if let Ok(menu) = Menu::try_from(suggs) {
+                        Some(menu)
+                    } else {
+                        None
+                    };
+                    redraw_quasimode = true;
+                } else {
+                    match vk_code {
+                        VK_UP | VK_DOWN => {
+                            if let Some(menu) = &mut self.menu {
+                                redraw_quasimode = true;
+                                if vk_code == VK_UP {
+                                    menu.select_prev();
+                                } else {
+                                    menu.select_next();
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
         };
         if redraw_quasimode {
             if let Some(ref mut quasimode) = self.quasimode {
-                // Eventually this will be dynamically generated based on the currently matched command.
-                let help_text = String::from(NOCMD_HELP);
+                let help_text: String = if let Some(menu) = &self.menu {
+                    let cmd_name = menu.selected_entry().value.name();
+                    format!("Run the command \u{201C}{}\u{201D}.", cmd_name)
+                } else if self.input.len() > 0 {
+                    String::from(NOCMD_HELP)
+                } else {
+                    String::from(EMPTY_INPUT_HELP)
+                };
 
                 quasimode.draw(
-                    &self.cmd,
+                    &self.input,
+                    &self.menu,
                     &help_text,
                     &self.dw_factory,
                     &self.text_format,
@@ -305,6 +407,6 @@ impl UserInterface {
                 )?;
             }
         }
-        return Ok(false);
+        return Ok(self.should_quit);
     }
 }
