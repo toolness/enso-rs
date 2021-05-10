@@ -140,11 +140,6 @@ impl QuasimodeRenderer {
             .with_font(small_text_format)
             .with_size(screen_width as f32, screen_height as f32)
             .build()?;
-        let cmd_layout = TextLayout::create(dw_factory)
-            .with_text(input)
-            .with_font(text_format)
-            .with_size(screen_width as f32, screen_height as f32)
-            .build()?;
         let mut menu_layouts: Vec<(TextLayout, bool, Vec<Range<usize>>)> = vec![];
         if let Some(menu) = optional_menu {
             for (sugg, is_selected) in menu.iter() {
@@ -155,6 +150,13 @@ impl QuasimodeRenderer {
                     .build()?;
                 menu_layouts.push((menu_layout, is_selected, sugg.matches.clone()));
             }
+        } else {
+            let cmd_layout = TextLayout::create(dw_factory)
+                .with_text(input)
+                .with_font(text_format)
+                .with_size(screen_width as f32, screen_height as f32)
+                .build()?;
+            menu_layouts.push((cmd_layout, true, vec![0..input.len()]));
         }
         self.window.draw_and_update(move |target| {
             let brushes = Brushes::new(target)?;
@@ -171,53 +173,32 @@ impl QuasimodeRenderer {
                 &brushes.help_fg,
                 DrawTextOptions::NONE,
             );
-            if menu_layouts.len() > 0 {
-                let mut y = help_height;
-                for (menu_layout, is_selected, matches) in menu_layouts {
-                    let menu_met = menu_layout.get_metrics();
-                    let new_y = y + menu_met.height() + PADDING_X2;
-                    target.fill_rectangle(
-                        (0.0, y, menu_met.width() + PADDING_X2, new_y),
-                        &brushes.default_bg,
-                    );
-                    for input_match in matches {
-                        let brush = if is_selected {
-                            &brushes.default_fg
-                        } else {
-                            &brushes.unselected_input_fg
-                        };
-                        let u32_match = (input_match.start as u32)..(input_match.end as u32);
-                        menu_layout
-                            .set_drawing_effect(brush, u32_match)
-                            .expect("setting brush for input highlight should work");
-                    }
-                    target.draw_text_layout(
-                        (PADDING, y + PADDING),
-                        &menu_layout,
-                        &brushes.autocompleted_fg,
-                        DrawTextOptions::NONE,
-                    );
-                    y = new_y;
+            let mut y = help_height;
+            for (menu_layout, is_selected, matches) in menu_layouts {
+                let menu_met = menu_layout.get_metrics();
+                let new_y = y + menu_met.height() + PADDING_X2;
+                target.fill_rectangle(
+                    (0.0, y, menu_met.width() + PADDING_X2, new_y),
+                    &brushes.default_bg,
+                );
+                for input_match in matches {
+                    let brush = if is_selected {
+                        &brushes.default_fg
+                    } else {
+                        &brushes.unselected_input_fg
+                    };
+                    let u32_match = (input_match.start as u32)..(input_match.end as u32);
+                    menu_layout
+                        .set_drawing_effect(brush, u32_match)
+                        .expect("setting brush for input highlight should work");
                 }
-            } else {
-                if input.len() > 0 {
-                    let cmd_met = cmd_layout.get_metrics();
-                    target.fill_rectangle(
-                        (
-                            0.0,
-                            help_height,
-                            cmd_met.width() + PADDING_X2,
-                            help_height + cmd_met.height() + PADDING_X2,
-                        ),
-                        &brushes.default_bg,
-                    );
-                    target.draw_text_layout(
-                        (PADDING, help_height + PADDING),
-                        &cmd_layout,
-                        &brushes.default_fg,
-                        DrawTextOptions::NONE,
-                    );
-                }
+                target.draw_text_layout(
+                    (PADDING, y + PADDING),
+                    &menu_layout,
+                    &brushes.autocompleted_fg,
+                    DrawTextOptions::NONE,
+                );
+                y = new_y;
             }
             Ok(())
         })?;
