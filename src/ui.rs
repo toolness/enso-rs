@@ -150,7 +150,7 @@ impl QuasimodeRenderer {
                     .build()?;
                 menu_layouts.push((menu_layout, is_selected, sugg.matches.clone()));
             }
-        } else {
+        } else if input.len() > 0 {
             let cmd_layout = TextLayout::create(dw_factory)
                 .with_text(input)
                 .with_font(text_format)
