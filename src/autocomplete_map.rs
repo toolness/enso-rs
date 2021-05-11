@@ -44,47 +44,25 @@ impl<'a> PartialOrd for CandidateSuggestion<'a> {
 }
 
 fn get_matches(input: &str, name: &str) -> Vec<Range<usize>> {
-    let mut matches = vec![];
+    // Note that our return value supports returning multiple matches, but
+    // we're currently just returning zero or one matches. This is because
+    // we started out returning *any* match of the given input string,
+    // even if the characters were interspersed with other characters
+    // that weren't in the search string; this ended up feeling quite
+    // unintuitive, though, so we altered this algorithm to just look
+    // for a simple substring.
+    //
+    // We're keeping the return type the same,
+    // though, just in case we decide to change the implementation again
+    // in the future.
 
-    if input.len() == 0 {
-        return matches;
-    }
-
-    let mut name_idx = 0;
-    let mut curr_match: Option<Range<usize>> = None;
-    let mut input_chars = input.chars();
-    let mut input_char = input_chars.next().unwrap();
-    let mut input_chars_matched = 0;
-
-    for name_char in name.chars() {
-        if name_char == input_char {
-            curr_match = match curr_match {
-                None => Some(name_idx..name_idx + 1),
-                Some(range) => Some(range.start..name_idx + 1),
-            };
-            input_chars_matched += 1;
-            if let Some(next_input_char) = input_chars.next() {
-                input_char = next_input_char;
-            } else {
-                break;
-            }
-        } else if let Some(match_) = curr_match {
-            matches.push(match_);
-            curr_match = None;
+    if input.len() > 0 {
+        if let Some(start) = name.find(input) {
+            return vec![start..(start + input.len())];
         }
-
-        name_idx += 1;
     }
 
-    if let Some(match_) = curr_match {
-        matches.push(match_);
-    }
-
-    if input_chars_matched != input.len() {
-        matches.clear();
-    }
-
-    matches
+    vec![]
 }
 
 fn get_best_candidates<'a, I: Iterator<Item = &'a String>>(
@@ -233,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_matches_returns_multiple_matches() {
-        assert_eq!(get_matches("boop", "bogus ops"), vec![0..2, 6..8]);
+    fn test_get_matches_returns_contiguous_matches() {
+        assert_eq!(get_matches("popper", "party popper"), vec![6..12]);
     }
 }
