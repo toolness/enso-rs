@@ -1,7 +1,7 @@
 // This data was auto-generated from the Unicode CLDR version 39.
 // Please do not edit it.
 
-pub const annotations: [(&'static str, &'static str); 1873] = [
+pub const CLDR_ANNOTATIONS: [(&'static str, &'static str); 1873] = [
   ("{", "open curly bracket"),
   ("🏻", "light skin tone"),
   ("🏼", "medium-light skin tone"),

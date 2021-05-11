@@ -20,7 +20,7 @@ const lines = [
   `// This data was auto-generated from the Unicode CLDR version ${ver}.`,
   `// Please do not edit it.`,
   '',
-  `pub const annotations: [(&'static str, &'static str); ${numEntries}] = [`
+  `pub const CLDR_ANNOTATIONS: [(&'static str, &'static str); ${numEntries}] = [`
 ];
 
 for ([char, item] of Object.entries(data.annotations.annotations)) {
