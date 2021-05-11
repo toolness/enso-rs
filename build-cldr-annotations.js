@@ -6,7 +6,7 @@ const RS_FILENAME = path.join('src', 'cldr_annotations.rs');
 
 if (!fs.existsSync(JSON_FILENAME)) {
   console.log(`Please download the JSON version of the Unicode CLDR annotations and save it in the current directory as ${JSON_FILENAME}.`);
-  console.log('You can download it from: https://github.com/unicode-org/cldr-json/blob/master/cldr-json/cldr-annotations-full/annotations/en/annotations.json');
+  console.log('You can download it from: https://raw.githubusercontent.com/unicode-org/cldr-json/master/cldr-json/cldr-annotations-full/annotations/en/annotations.json');
   process.exit(1);
 }
 
