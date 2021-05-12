@@ -68,7 +68,7 @@ const lines = [
 
 for (let [char, item] of Object.entries(data.annotations.annotations)) {
   const name = formatForCommandName(item.tts[0]);
-  lines.push(`  (${JSON.stringify(char)}, "${name}"),`);
+  lines.push(`  (${JSON.stringify(char)}, ${JSON.stringify(name)}),`);
 }
 
 lines.push('];\n');
