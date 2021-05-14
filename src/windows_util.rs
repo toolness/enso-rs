@@ -2,8 +2,8 @@ use std::ptr::null_mut;
 use winapi::shared::windef::POINT;
 use winapi::um::winuser;
 use winapi::um::winuser::{
-    GetSystemMetrics, INPUT_u, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_UNICODE, MSG,
-    SM_CXSCREEN, SM_CYSCREEN,
+    GetKeyState, GetSystemMetrics, INPUT_u, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP,
+    KEYEVENTF_UNICODE, MSG, SM_CXSCREEN, SM_CYSCREEN, VK_CAPITAL,
 };
 
 use super::error::Error;
@@ -21,6 +21,69 @@ pub fn create_blank_msg() -> MSG {
         lParam: 0,
         time: 0,
         pt: POINT { x: 0, y: 0 },
+    }
+}
+
+enum KeyDirection {
+    Up,
+    Down,
+}
+
+fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {
+    unsafe {
+        let mut u: INPUT_u = Default::default();
+        let mut ki = u.ki_mut();
+        ki.wVk = vk as u16;
+        ki.dwFlags = match direction {
+            KeyDirection::Up => KEYEVENTF_KEYUP,
+            KeyDirection::Down => 0,
+        };
+        let mut inp = INPUT {
+            type_: INPUT_KEYBOARD,
+            u,
+        };
+        let result = SendInput(1, &mut inp, std::mem::size_of_val(&inp) as i32);
+        if result != 1 {
+            return Err(Error::WindowsAPIGeneric);
+        }
+    }
+    Ok(())
+}
+
+pub fn disable_caps_lock() -> Result<(), Error> {
+    let curr_state = unsafe { GetKeyState(VK_CAPITAL) };
+
+    const LOW_ORDER_BIT: i16 = 0x01;
+    const HIGH_ORDER_BIT: i16 = 0x80;
+
+    // From the MSDN documentation for `GetKeyState`'s return value:
+    //
+    //   * If the high-order bit is 1, the key is down; otherwise, it is up.
+    //   * If the low-order bit is 1, the key is toggled. A key, such as the
+    //     CAPS LOCK key, is toggled if it is turned on.
+
+    let is_down = (curr_state & HIGH_ORDER_BIT) != 0;
+    let is_toggled = (curr_state & LOW_ORDER_BIT) != 0;
+
+    if is_toggled {
+        if is_down {
+            // Looks like the caps lock key is physically pressed
+            // down. Let's temporarily release it.
+            send_keypress(VK_CAPITAL, KeyDirection::Up)?;
+        }
+
+        // Press the caps lock key down.
+        send_keypress(VK_CAPITAL, KeyDirection::Down)?;
+
+        // Now release the caps lock key, unless it was already being
+        // pressed down.
+        if !is_down {
+            send_keypress(VK_CAPITAL, KeyDirection::Up)?;
+        }
+
+        Ok(())
+    } else {
+        Ok(())
     }
 }
 
