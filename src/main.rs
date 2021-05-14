@@ -30,6 +30,8 @@ fn run_enso() -> Result<(), Box<error::Error>> {
     let eloop = event_loop::EventLoop::new();
     let (tx, rx) = channel();
 
+    windows_util::disable_caps_lock()?;
+
     let keyhook = keyboard_hook::KeyboardHook::install(tx, eloop.get_thread_id());
     let mut ui = ui::UserInterface::new(d3d_device)?;
 
