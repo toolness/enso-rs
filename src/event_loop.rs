@@ -5,7 +5,9 @@ use winapi::shared::{minwindef, windef};
 use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::um::processthreadsapi::GetCurrentThreadId;
 use winapi::um::winuser;
-use winapi::um::winuser::{DispatchMessageA, GetMessageA, PostThreadMessageA, WM_TIMER, WM_USER};
+use winapi::um::winuser::{
+    DispatchMessageA, GetMessageA, PostThreadMessageA, WM_CLOSE, WM_TIMER, WM_USER,
+};
 
 use super::error::Error;
 use super::windows_util;
@@ -37,6 +39,28 @@ unsafe fn window_class_name_ptr() -> *const i8 {
 }
 
 impl EventLoop {
+    fn end_other_event_loop_processes() -> Result<(), Error> {
+        unsafe {
+            let hwnd = winuser::FindWindowA(window_class_name_ptr(), null_mut());
+
+            if hwnd != null_mut() {
+                println!(
+                    "Existing event loop found with HWND {:?}. Closing it.",
+                    hwnd
+                );
+                let result = winuser::PostMessageA(hwnd, WM_CLOSE, 0, 0);
+                if result == 0 {
+                    println!(
+                        "An error occurred when ending the existing event loop ({}).",
+                        Error::get_last_windows_api_error()
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn create_window_class() -> Result<minwindef::ATOM, Error> {
         INIT_WINDOW_CLASS.call_once(|| {
             let info = winuser::WNDCLASSEXA {
@@ -114,7 +138,8 @@ impl EventLoop {
     where
         F: FnMut() -> Result<bool, Error>,
     {
-        Self::create_window()?;
+        Self::end_other_event_loop_processes()?;
+        let hwnd = Self::create_window()?;
 
         let mut msg = windows_util::create_blank_msg();
 
@@ -145,6 +170,9 @@ impl EventLoop {
                             println!("Unknown thread message: 0x{:x}", msg.message);
                         }
                     }
+                } else if msg.hwnd == hwnd && msg.message == WM_CLOSE {
+                    println!("Event loop window received WM_CLOSE, exiting.");
+                    break;
                 }
                 unsafe {
                     DispatchMessageA(&msg);
