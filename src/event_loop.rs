@@ -91,8 +91,8 @@ impl EventLoop {
         let window_style = 0;
         let window = unsafe {
             winuser::CreateWindowExA(
-                ex_style, /* dwExStyle    */
-                to_lpcstr(WINDOW_CLASS_NAME),
+                ex_style,                     /* dwExStyle    */
+                to_lpcstr(WINDOW_CLASS_NAME), /* lpClassName  */
                 null_mut(),                   /* lpWindowName */
                 window_style,                 /* dwStyle      */
                 0,                            /* x            */
