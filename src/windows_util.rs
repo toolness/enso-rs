@@ -1,3 +1,4 @@
+use std::ffi::CStr;
 use std::ptr::null_mut;
 use winapi::shared::windef::POINT;
 use winapi::um::winuser;
@@ -27,6 +28,12 @@ pub fn create_blank_msg() -> MSG {
 enum KeyDirection {
     Up,
     Down,
+}
+
+/// Converts the given nul-terminated statically allocated string
+/// to a pointer capable of being used as a LPCSTR in win32 API calls.
+pub fn to_lpcstr(name: &'static [u8]) -> *const i8 {
+    CStr::from_bytes_with_nul(name).unwrap().as_ptr()
 }
 
 fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {

@@ -1,4 +1,3 @@
-use std::ffi::CStr;
 use std::ptr::null_mut;
 use std::sync::Once;
 use winapi::shared::{minwindef, windef};
@@ -10,7 +9,7 @@ use winapi::um::winuser::{
 };
 
 use super::error::Error;
-use super::windows_util;
+use super::windows_util::{create_blank_msg, to_lpcstr};
 
 const WM_USER_KICK_EVENT_LOOP: u32 = WM_USER + 1;
 
@@ -28,20 +27,10 @@ pub fn kick_event_loop(thread_id: u32) {
     }
 }
 
-unsafe fn window_class_name_ptr() -> *const i8 {
-    // We're safe unwrapping this because an error will only
-    // occur if WINDOW_CLASS_NAME isn't nul-terminated or
-    // contains interior nul bytes, which we know won't
-    // be the case at runtime.
-    CStr::from_bytes_with_nul(WINDOW_CLASS_NAME)
-        .unwrap()
-        .as_ptr()
-}
-
 impl EventLoop {
     fn end_other_event_loop_processes() -> Result<(), Error> {
         unsafe {
-            let hwnd = winuser::FindWindowA(window_class_name_ptr(), null_mut());
+            let hwnd = winuser::FindWindowA(to_lpcstr(WINDOW_CLASS_NAME), null_mut());
 
             if hwnd != null_mut() {
                 println!(
@@ -74,7 +63,7 @@ impl EventLoop {
                 hCursor: null_mut(),
                 hbrBackground: null_mut(),
                 lpszMenuName: null_mut(),
-                lpszClassName: unsafe { window_class_name_ptr() },
+                lpszClassName: to_lpcstr(WINDOW_CLASS_NAME),
                 hIconSm: null_mut(),
             };
 
@@ -102,8 +91,8 @@ impl EventLoop {
         let window_style = 0;
         let window = unsafe {
             winuser::CreateWindowExA(
-                ex_style,                     /* dwExStyle    */
-                window_class_name_ptr(),      /* lpClassName  */
+                ex_style, /* dwExStyle    */
+                to_lpcstr(WINDOW_CLASS_NAME),
                 null_mut(),                   /* lpWindowName */
                 window_style,                 /* dwStyle      */
                 0,                            /* x            */
@@ -140,8 +129,7 @@ impl EventLoop {
     {
         Self::end_other_event_loop_processes()?;
         let hwnd = Self::create_window()?;
-
-        let mut msg = windows_util::create_blank_msg();
+        let mut msg = create_blank_msg();
 
         loop {
             let result = unsafe { GetMessageA(&mut msg, null_mut(), 0, 0) };
@@ -184,12 +172,5 @@ impl EventLoop {
         }
 
         Ok(())
-    }
-}
-
-#[test]
-fn test_window_class_name_ptr() {
-    unsafe {
-        window_class_name_ptr();
     }
 }
