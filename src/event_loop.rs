@@ -1,11 +1,20 @@
+use std::ffi::CStr;
 use std::ptr::null_mut;
+use std::sync::Once;
+use winapi::shared::{minwindef, windef};
+use winapi::um::libloaderapi::GetModuleHandleA;
 use winapi::um::processthreadsapi::GetCurrentThreadId;
+use winapi::um::winuser;
 use winapi::um::winuser::{DispatchMessageA, GetMessageA, PostThreadMessageA, WM_TIMER, WM_USER};
 
 use super::error::Error;
 use super::windows_util;
 
 const WM_USER_KICK_EVENT_LOOP: u32 = WM_USER + 1;
+
+static mut WINDOW_CLASS: Result<minwindef::ATOM, minwindef::DWORD> = Ok(0);
+static INIT_WINDOW_CLASS: Once = Once::new();
+static WINDOW_CLASS_NAME: &'static [u8] = b"EnsoEventLoopWindow\0";
 
 pub struct EventLoop {
     thread_id: u32,
@@ -17,7 +26,81 @@ pub fn kick_event_loop(thread_id: u32) {
     }
 }
 
+unsafe fn window_class_name_ptr() -> *const i8 {
+    // We're safe unwrapping this because an error will only
+    // occur if WINDOW_CLASS_NAME isn't nul-terminated or
+    // contains interior nul bytes, which we know won't
+    // be the case at runtime.
+    CStr::from_bytes_with_nul(WINDOW_CLASS_NAME)
+        .unwrap()
+        .as_ptr()
+}
+
 impl EventLoop {
+    fn create_window_class() -> Result<minwindef::ATOM, Error> {
+        INIT_WINDOW_CLASS.call_once(|| {
+            let info = winuser::WNDCLASSEXA {
+                cbSize: std::mem::size_of::<winuser::WNDCLASSEXA>() as u32,
+                style: 0,
+                lpfnWndProc: Some(winuser::DefWindowProcA),
+                cbClsExtra: 0,
+                cbWndExtra: 0,
+                hInstance: unsafe { GetModuleHandleA(null_mut()) },
+                hIcon: null_mut(),
+                hCursor: null_mut(),
+                hbrBackground: null_mut(),
+                lpszMenuName: null_mut(),
+                lpszClassName: unsafe { window_class_name_ptr() },
+                hIconSm: null_mut(),
+            };
+
+            let window_class = unsafe { winuser::RegisterClassExA(&info) };
+
+            unsafe {
+                WINDOW_CLASS = if window_class == 0 {
+                    Err(Error::get_last_windows_api_error())
+                } else {
+                    Ok(window_class)
+                };
+            }
+        });
+        let result = unsafe { WINDOW_CLASS };
+        match result {
+            Ok(atom) => Ok(atom),
+            Err(code) => Err(Error::WindowsAPI(code)),
+        }
+    }
+
+    fn create_window() -> Result<windef::HWND, Error> {
+        Self::create_window_class()?;
+        let old_fg_window = unsafe { winuser::GetForegroundWindow() };
+        let ex_style = 0;
+        let window_style = 0;
+        let window = unsafe {
+            winuser::CreateWindowExA(
+                ex_style,                     /* dwExStyle    */
+                window_class_name_ptr(),      /* lpClassName  */
+                null_mut(),                   /* lpWindowName */
+                window_style,                 /* dwStyle      */
+                0,                            /* x            */
+                0,                            /* y            */
+                0,                            /* nWidth       */
+                0,                            /* nHeight      */
+                null_mut(),                   /* hWndParent   */
+                null_mut(),                   /* hMenu        */
+                GetModuleHandleA(null_mut()), /* hInstance    */
+                null_mut(),                   /* lpParam      */
+            )
+        };
+
+        if window == null_mut() {
+            return Err(Error::from_winapi());
+        }
+        unsafe { winuser::SetForegroundWindow(old_fg_window) };
+
+        Ok(window)
+    }
+
     pub fn new() -> Self {
         let thread_id = unsafe { GetCurrentThreadId() };
         EventLoop { thread_id }
@@ -31,6 +114,8 @@ impl EventLoop {
     where
         F: FnMut() -> Result<bool, Error>,
     {
+        Self::create_window()?;
+
         let mut msg = windows_util::create_blank_msg();
 
         loop {
@@ -71,5 +156,12 @@ impl EventLoop {
         }
 
         Ok(())
+    }
+}
+
+#[test]
+fn test_window_class_name_ptr() {
+    unsafe {
+        window_class_name_ptr();
     }
 }
