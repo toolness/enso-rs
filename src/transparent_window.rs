@@ -1,5 +1,4 @@
 use direct2d::render_target::DxgiSurfaceRenderTarget;
-use std::ffi::CStr;
 use std::ptr::null_mut;
 use std::sync::Once;
 use winapi::shared::{minwindef, windef};
@@ -8,6 +7,7 @@ use winapi::um::{wingdi, winuser};
 
 use super::directx::{Direct2DLayeredWindowRenderer, Direct3DDevice, LayeredWindowUpdateOptions};
 use super::error::Error;
+use super::windows_util::to_lpcstr;
 
 static mut WINDOW_CLASS: Result<minwindef::ATOM, minwindef::DWORD> = Ok(0);
 static INIT_WINDOW_CLASS: Once = Once::new();
@@ -38,7 +38,7 @@ impl TransparentWindow {
                 hCursor: null_mut(),
                 hbrBackground: bg,
                 lpszMenuName: null_mut(),
-                lpszClassName: unsafe { window_class_name_ptr() },
+                lpszClassName: to_lpcstr(WINDOW_CLASS_NAME),
                 hIconSm: null_mut(),
             };
 
@@ -70,7 +70,7 @@ impl TransparentWindow {
         let window = unsafe {
             winuser::CreateWindowExA(
                 ex_style,                     /* dwExStyle    */
-                window_class_name_ptr(),      /* lpClassName  */
+                to_lpcstr(WINDOW_CLASS_NAME), /* lpClassName  */
                 null_mut(),                   /* lpWindowName */
                 window_style,                 /* dwStyle      */
                 x,                            /* x            */
@@ -140,22 +140,5 @@ impl Drop for TransparentWindow {
         if unsafe { winuser::DestroyWindow(self.hwnd) } == 0 {
             println!("Warning: Couldn't destroy transparent window!");
         }
-    }
-}
-
-unsafe fn window_class_name_ptr() -> *const i8 {
-    // We're safe unwrapping this because an error will only
-    // occur if WINDOW_CLASS_NAME isn't nul-terminated or
-    // contains interior nul bytes, which we know won't
-    // be the case at runtime.
-    CStr::from_bytes_with_nul(WINDOW_CLASS_NAME)
-        .unwrap()
-        .as_ptr()
-}
-
-#[test]
-fn test_window_class_name_ptr() {
-    unsafe {
-        window_class_name_ptr();
     }
 }
