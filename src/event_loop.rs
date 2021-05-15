@@ -86,15 +86,12 @@ impl EventLoop {
 
     fn create_window() -> Result<windef::HWND, Error> {
         Self::create_window_class()?;
-        let old_fg_window = unsafe { winuser::GetForegroundWindow() };
-        let ex_style = 0;
-        let window_style = 0;
         let window = unsafe {
             winuser::CreateWindowExA(
-                ex_style,                     /* dwExStyle    */
+                0,                            /* dwExStyle    */
                 to_lpcstr(WINDOW_CLASS_NAME), /* lpClassName  */
                 null_mut(),                   /* lpWindowName */
-                window_style,                 /* dwStyle      */
+                0,                            /* dwStyle      */
                 0,                            /* x            */
                 0,                            /* y            */
                 0,                            /* nWidth       */
@@ -109,7 +106,6 @@ impl EventLoop {
         if window == null_mut() {
             return Err(Error::from_winapi());
         }
-        unsafe { winuser::SetForegroundWindow(old_fg_window) };
 
         Ok(window)
     }
