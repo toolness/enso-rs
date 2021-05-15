@@ -28,7 +28,7 @@ pub fn kick_event_loop(thread_id: u32) {
 }
 
 impl EventLoop {
-    fn end_other_event_loop_processes() -> Result<(), Error> {
+    fn end_any_existing_event_loop_process() -> Result<(), Error> {
         unsafe {
             let hwnd = winuser::FindWindowA(to_lpcstr(WINDOW_CLASS_NAME), null_mut());
 
@@ -123,7 +123,7 @@ impl EventLoop {
     where
         F: FnMut() -> Result<bool, Error>,
     {
-        Self::end_other_event_loop_processes()?;
+        Self::end_any_existing_event_loop_process()?;
         let hwnd = Self::create_window()?;
         let mut msg = create_blank_msg();
 
