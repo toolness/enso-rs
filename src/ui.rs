@@ -9,7 +9,7 @@ use std::ops::Range;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
-use crate::windows_util::send_modifier_keypress;
+use crate::windows_util::{send_modifier_keypress, send_raw_keypress_for_char};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::Command;
@@ -277,10 +277,22 @@ impl UserInterface {
         Ok(())
     }
 
-    pub fn press_modifier_key(key: ModifierKey, direction: KeyDirection) -> Result<(), Error> {
+    pub fn press_modifier_key(
+        &mut self,
+        key: ModifierKey,
+        direction: KeyDirection,
+    ) -> Result<(), Error> {
         send_modifier_keypress(key, direction)
     }
 
+    /// Press the key that corresponds to the given ASCII character. Use this
+    /// if you are simulating a hotkey combination, etc.
+    pub fn press_key(&mut self, ch: char, direction: KeyDirection) -> Result<bool, Error> {
+        send_raw_keypress_for_char(ch, direction)
+    }
+
+    /// Insert the given unicode character into the current application. This doesn't
+    /// take into account the current modifier keys or anything.
     pub fn type_char(&mut self, ch: &str) -> Result<(), Error> {
         send_unicode_keypress(ch)
     }

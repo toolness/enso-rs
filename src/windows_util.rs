@@ -42,6 +42,16 @@ pub fn send_modifier_keypress(key: ModifierKey, direction: KeyDirection) -> Resu
     send_keypress(vk, direction)
 }
 
+pub fn send_raw_keypress_for_char(ch: char, direction: KeyDirection) -> Result<bool, Error> {
+    let vkey = char_to_vkey(ch);
+    if let Some(vk) = vkey {
+        send_keypress(vk, direction)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {
     unsafe {
         let mut u: INPUT_u = Default::default();
@@ -144,6 +154,15 @@ fn test_get_primary_screen_size() {
 #[test]
 fn test_disable_caps_lock() {
     assert!(disable_caps_lock().is_ok());
+}
+
+pub fn char_to_vkey(char: char) -> Option<i32> {
+    match char.to_ascii_uppercase() {
+        '0'..='9' => Some(VK_0 + (char as u8 - '0' as u8) as i32),
+        'A'..='Z' => Some(VK_A + (char as u8 - 'A' as u8) as i32),
+        ' ' => Some(winuser::VK_SPACE),
+        _ => None,
+    }
 }
 
 pub fn vkey_to_char(vk_code: i32) -> Option<char> {
