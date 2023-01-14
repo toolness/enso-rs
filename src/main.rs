@@ -2,11 +2,14 @@
 // in release, but will in debug and testing.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use crate::default_commands::install_default_commands;
+
 extern crate winapi;
 
 mod autocomplete_map;
 mod cldr_annotations;
 mod command;
+mod default_commands;
 mod directx;
 mod error;
 mod event_loop;
@@ -35,7 +38,7 @@ fn run_enso() -> Result<(), Box<error::Error>> {
     let keyhook = keyboard_hook::KeyboardHook::install(tx, eloop.get_thread_id());
     let mut ui = ui::UserInterface::new(d3d_device)?;
 
-    insert_commands::insert_commands(&mut ui);
+    install_default_commands(&mut ui);
 
     ui.show_message("Welcome to Enso!")?;
 

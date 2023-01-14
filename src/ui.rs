@@ -10,7 +10,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
-use super::command::{Command, SimpleCommand};
+use super::command::Command;
 use super::directx::Direct3DDevice;
 use super::error::Error;
 use super::events::Event;
@@ -230,7 +230,7 @@ impl UserInterface {
             .with_family(FONT_FAMILY)
             .with_size(SMALL_FONT_SIZE)
             .build()?;
-        let mut ui = UserInterface {
+        let ui = UserInterface {
             input: String::new(),
             should_quit: false,
             d3d_device,
@@ -242,19 +242,7 @@ impl UserInterface {
             menu: None,
             commands: AutocompleteMap::new(),
         };
-        ui.add_builtin_commands();
         Ok(ui)
-    }
-
-    fn add_builtin_commands(&mut self) {
-        self.add_command(
-            SimpleCommand::new("help", |ui| {
-                ui.show_message("Sorry, still need to implement help!")
-            })
-            .into_box(),
-        );
-
-        self.add_command(SimpleCommand::new("quit", |ui| ui.quit()).into_box());
     }
 
     pub fn add_command(&mut self, command: Box<dyn Command>) {
