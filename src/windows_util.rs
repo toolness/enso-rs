@@ -7,6 +7,8 @@ use winapi::um::winuser::{
     KEYEVENTF_UNICODE, MSG, SM_CXSCREEN, SM_CYSCREEN, VK_CAPITAL,
 };
 
+use crate::ui::{KeyDirection, ModifierKey};
+
 use super::error::Error;
 
 const VK_0: i32 = 0x30;
@@ -25,15 +27,19 @@ pub fn create_blank_msg() -> MSG {
     }
 }
 
-enum KeyDirection {
-    Up,
-    Down,
-}
-
 /// Converts the given nul-terminated statically allocated string
 /// to a pointer capable of being used as a LPCSTR in win32 API calls.
 pub fn to_lpcstr(name: &'static [u8]) -> *const i8 {
     CStr::from_bytes_with_nul(name).unwrap().as_ptr()
+}
+
+pub fn send_modifier_keypress(key: ModifierKey, direction: KeyDirection) -> Result<(), Error> {
+    let vk = match key {
+        ModifierKey::Alt => winuser::VK_MENU,
+        ModifierKey::Control => winuser::VK_CONTROL,
+        ModifierKey::Shift => winuser::VK_SHIFT,
+    };
+    send_keypress(vk, direction)
 }
 
 fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {

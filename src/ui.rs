@@ -9,6 +9,8 @@ use std::ops::Range;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
+use crate::windows_util::send_modifier_keypress;
+
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::Command;
 use super::directx::Direct3DDevice;
@@ -36,6 +38,17 @@ const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
 const NOCMD_HELP: &'static str = "No command matches your input.";
 const EMPTY_INPUT_HELP: &'static str =
     "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
+
+pub enum KeyDirection {
+    Up,
+    Down,
+}
+
+pub enum ModifierKey {
+    Shift,
+    Alt,
+    Control,
+}
 
 fn make_simple_brush<T: RenderTarget>(
     target: &mut T,
@@ -262,6 +275,10 @@ impl UserInterface {
             &self.text_format,
         )?);
         Ok(())
+    }
+
+    pub fn press_modifier_key(key: ModifierKey, direction: KeyDirection) -> Result<(), Error> {
+        send_modifier_keypress(key, direction)
     }
 
     pub fn type_char(&mut self, ch: &str) -> Result<(), Error> {
