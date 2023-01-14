@@ -9,6 +9,7 @@ use std::ops::Range;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
+use crate::command::SimpleCommand;
 use crate::windows_util::{send_modifier_keypress, send_raw_keypress_for_char};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
@@ -256,6 +257,14 @@ impl UserInterface {
             commands: AutocompleteMap::new(),
         };
         Ok(ui)
+    }
+
+    pub fn add_simple_command(
+        &mut self,
+        name: &str,
+        callback: impl FnMut(&mut UserInterface) -> Result<(), Error> + Clone + 'static,
+    ) {
+        self.add_command(Box::new(SimpleCommand::new(name, callback)));
     }
 
     pub fn add_command(&mut self, command: Box<dyn Command>) {
