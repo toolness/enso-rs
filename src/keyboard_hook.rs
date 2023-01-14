@@ -15,8 +15,14 @@ use winapi::shared::ntdef::NULL;
 use winapi::shared::windef::HHOOK;
 
 use super::event_loop::kick_event_loop;
-use super::events::HookEvent;
 use super::windows_util;
+
+#[derive(Debug)]
+pub enum HookEvent {
+    Keypress(i32),
+    QuasimodeStart,
+    QuasimodeEnd,
+}
 
 struct HookState {
     sender: Sender<HookEvent>,

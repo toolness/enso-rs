@@ -10,7 +10,6 @@ mod commands;
 mod directx;
 mod error;
 mod event_loop;
-mod events;
 mod keyboard_hook;
 mod menu;
 mod transparent_window;

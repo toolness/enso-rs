@@ -16,7 +16,7 @@ use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::Command;
 use super::directx::Direct3DDevice;
 use super::error::Error;
-use super::events::HookEvent;
+use super::keyboard_hook::HookEvent;
 use super::menu::Menu;
 use super::transparent_window::TransparentWindow;
 use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_to_char};
