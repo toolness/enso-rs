@@ -16,7 +16,7 @@ use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::Command;
 use super::directx::Direct3DDevice;
 use super::error::Error;
-use super::events::Event;
+use super::events::HookEvent;
 use super::menu::Menu;
 use super::transparent_window::TransparentWindow;
 use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_to_char};
@@ -306,7 +306,10 @@ impl UserInterface {
         send_unicode_keypress(ch)
     }
 
-    pub fn process_event_receiver(&mut self, receiver: &Receiver<Event>) -> Result<bool, Error> {
+    pub fn process_event_receiver(
+        &mut self,
+        receiver: &Receiver<HookEvent>,
+    ) -> Result<bool, Error> {
         loop {
             match receiver.try_recv() {
                 Ok(event) => {
@@ -324,22 +327,22 @@ impl UserInterface {
         }
     }
 
-    pub fn process_event(&mut self, event: Event) -> Result<bool, Error> {
+    pub fn process_event(&mut self, event: HookEvent) -> Result<bool, Error> {
         let mut redraw_quasimode = false;
         if self.message.is_some() {
             match event {
-                Event::QuasimodeStart | Event::QuasimodeEnd => self.message = None,
+                HookEvent::QuasimodeStart | HookEvent::QuasimodeEnd => self.message = None,
                 _ => {}
             }
         }
         match event {
-            Event::QuasimodeStart => {
+            HookEvent::QuasimodeStart => {
                 println!("Starting quasimode.");
                 self.input.clear();
                 self.quasimode = Some(QuasimodeRenderer::new(&mut self.d3d_device)?);
                 redraw_quasimode = true;
             }
-            Event::QuasimodeEnd => {
+            HookEvent::QuasimodeEnd => {
                 println!("Ending quasimode.");
                 self.quasimode = None;
                 if let Some(menu) = self.menu.take() {
@@ -353,7 +356,7 @@ impl UserInterface {
                     ))?;
                 }
             }
-            Event::Keypress(vk_code) => {
+            HookEvent::Keypress(vk_code) => {
                 let input_changed = if vk_code == VK_BACK {
                     match self.input.pop() {
                         None => false,

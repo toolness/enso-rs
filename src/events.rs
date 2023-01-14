@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum Event {
+pub enum HookEvent {
     Keypress(i32),
     QuasimodeStart,
     QuasimodeEnd,

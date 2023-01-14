@@ -15,11 +15,11 @@ use winapi::shared::ntdef::NULL;
 use winapi::shared::windef::HHOOK;
 
 use super::event_loop::kick_event_loop;
-use super::events::Event;
+use super::events::HookEvent;
 use super::windows_util;
 
 struct HookState {
-    sender: Sender<Event>,
+    sender: Sender<HookEvent>,
     receiver_thread_id: u32,
     in_quasimode: bool,
 }
@@ -35,25 +35,25 @@ impl HookState {
         let is_key_down = wm_type == WM_KEYDOWN || wm_type == WM_SYSKEYDOWN;
         let mut force_eat_key = false;
 
-        let possible_event: Option<Event> = if self.in_quasimode {
+        let possible_event: Option<HookEvent> = if self.in_quasimode {
             if is_quasimode_key {
                 if is_key_up {
                     self.in_quasimode = false;
-                    Some(Event::QuasimodeEnd)
+                    Some(HookEvent::QuasimodeEnd)
                 } else {
                     // This is likely the quasimode key being auto-repeated.
                     force_eat_key = true;
                     None
                 }
             } else if is_key_down {
-                Some(Event::Keypress(vk_code))
+                Some(HookEvent::Keypress(vk_code))
             } else {
                 None
             }
         } else {
             if is_quasimode_key && is_key_down {
                 self.in_quasimode = true;
-                Some(Event::QuasimodeStart)
+                Some(HookEvent::QuasimodeStart)
             } else {
                 None
             }
@@ -84,7 +84,11 @@ pub struct KeyboardHook {
 }
 
 impl KeyboardHook {
-    fn install_in_thread(init_sender: Sender<u32>, sender: Sender<Event>, receiver_thread_id: u32) {
+    fn install_in_thread(
+        init_sender: Sender<u32>,
+        sender: Sender<HookEvent>,
+        receiver_thread_id: u32,
+    ) {
         let hook_id =
             unsafe { SetWindowsHookExA(WH_KEYBOARD_LL, Some(hook_callback), null_mut(), 0) };
         if hook_id == NULL as HHOOK {
@@ -130,7 +134,7 @@ impl KeyboardHook {
         });
     }
 
-    pub fn install(sender: Sender<Event>, receiver_thread_id: u32) -> Self {
+    pub fn install(sender: Sender<HookEvent>, receiver_thread_id: u32) -> Self {
         let (tx, rx) = channel();
         let builder = thread::Builder::new()
             .name("Keyboard hook".into())
