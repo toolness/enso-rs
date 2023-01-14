@@ -10,7 +10,6 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
 use crate::command::SimpleCommand;
-use crate::commands::refresh_default_commands;
 use crate::windows_util::{send_modifier_keypress, send_raw_keypress_for_char};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
@@ -221,6 +220,17 @@ impl QuasimodeRenderer {
     }
 }
 
+#[allow(unused_variables)]
+pub trait UserInterfacePlugin {
+    fn init(&mut self, ui: &mut UserInterface) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn on_quasimode_start(&mut self, ui: &mut UserInterface) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
 pub struct UserInterface {
     input: String,
     should_quit: bool,
@@ -232,6 +242,7 @@ pub struct UserInterface {
     message: Option<TransparentMessageRenderer>,
     menu: Option<Menu<AutocompleteSuggestion<Box<dyn Command>>>>,
     commands: AutocompleteMap<Box<dyn Command>>,
+    plugins: Option<Vec<Box<dyn UserInterfacePlugin>>>,
 }
 
 impl UserInterface {
@@ -256,8 +267,17 @@ impl UserInterface {
             message: None,
             menu: None,
             commands: AutocompleteMap::new(),
+            plugins: Some(vec![]),
         };
         Ok(ui)
+    }
+
+    pub fn add_plugin(&mut self, mut plugin: Box<dyn UserInterfacePlugin>) -> Result<(), Error> {
+        with_plugins(self, move |ui, plugins| {
+            plugin.init(ui)?;
+            plugins.push(plugin);
+            Ok(())
+        })
     }
 
     pub fn add_simple_command(
@@ -344,7 +364,12 @@ impl UserInterface {
         match event {
             HookEvent::QuasimodeStart => {
                 println!("Starting quasimode.");
-                refresh_default_commands(self)?;
+                with_plugins(self, move |ui, plugins| {
+                    for plugin in plugins.iter_mut() {
+                        plugin.on_quasimode_start(ui)?;
+                    }
+                    Ok(())
+                })?;
                 self.input.clear();
                 self.quasimode = Some(QuasimodeRenderer::new(&mut self.d3d_device)?);
                 redraw_quasimode = true;
@@ -426,4 +451,19 @@ impl UserInterface {
         }
         return Ok(self.should_quit);
     }
+}
+
+/// Ugh, because UI plugin methods take a mutable reference to themselves, we can't have part
+/// of them borrowed while calling those methods. So this is a workaround.
+fn with_plugins<F>(ui: &mut UserInterface, f: F) -> Result<(), Error>
+where
+    F: FnOnce(&mut UserInterface, &mut Vec<Box<dyn UserInterfacePlugin>>) -> Result<(), Error>,
+{
+    let mut plugins = match ui.plugins.take() {
+        Some(plugins) => plugins,
+        None => return Err(Error::new("plugins are in use")),
+    };
+    f(ui, &mut plugins)?;
+    ui.plugins = Some(plugins);
+    Ok(())
 }

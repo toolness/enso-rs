@@ -18,6 +18,10 @@ pub enum Error {
 }
 
 impl Error {
+    pub fn new(msg: &str) -> Self {
+        Error::Other(msg.into())
+    }
+
     pub fn get_last_windows_api_error() -> DWORD {
         unsafe { GetLastError() }
     }

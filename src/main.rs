@@ -2,6 +2,8 @@
 // in release, but will in debug and testing.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use crate::commands::DefaultCommandsPlugin;
+
 extern crate winapi;
 
 mod autocomplete_map;
@@ -33,7 +35,7 @@ fn run_enso() -> Result<(), Box<error::Error>> {
     let keyhook = keyboard_hook::KeyboardHook::install(tx, eloop.get_thread_id());
     let mut ui = ui::UserInterface::new(d3d_device)?;
 
-    commands::install_default_commands(&mut ui);
+    ui.add_plugin(DefaultCommandsPlugin::new())?;
 
     ui.show_message("Welcome to Enso!")?;
 
