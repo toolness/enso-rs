@@ -1,4 +1,6 @@
-use crate::{command::SimpleCommand, insert_commands, ui::UserInterface};
+use crate::{command::SimpleCommand, ui::UserInterface};
+
+use super::insert_commands::insert_commands;
 
 pub fn install_default_commands(ui: &mut UserInterface) {
     ui.add_command(
@@ -10,5 +12,5 @@ pub fn install_default_commands(ui: &mut UserInterface) {
 
     ui.add_command(SimpleCommand::new("quit", |ui| ui.quit()).into_box());
 
-    insert_commands::insert_commands(ui);
+    insert_commands(ui);
 }

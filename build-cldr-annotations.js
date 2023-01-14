@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const JSON_FILENAME = 'annotations.json';
-const RS_FILENAME = path.join('src', 'cldr_annotations.rs');
+const RS_FILENAME = path.join('src', 'commands', 'cldr_annotations.rs');
 
 if (!fs.existsSync(JSON_FILENAME)) {
   console.log(`Please download the JSON version of the Unicode CLDR annotations and save it in the current directory as ${JSON_FILENAME}.`);
