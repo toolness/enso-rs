@@ -10,6 +10,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
 use crate::command::SimpleCommand;
+use crate::commands::refresh_default_commands;
 use crate::windows_util::{send_modifier_keypress, send_raw_keypress_for_char};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
@@ -343,6 +344,7 @@ impl UserInterface {
         match event {
             HookEvent::QuasimodeStart => {
                 println!("Starting quasimode.");
+                refresh_default_commands(self)?;
                 self.input.clear();
                 self.quasimode = Some(QuasimodeRenderer::new(&mut self.d3d_device)?);
                 redraw_quasimode = true;
