@@ -296,6 +296,11 @@ impl UserInterface {
 
     /// Press the key that corresponds to the given ASCII character. Use this
     /// if you are simulating a hotkey combination, etc.
+    ///
+    /// Returns true if the key was pressed, or false if the key was not an ASCII key
+    /// that could be pressed.
+    ///
+    /// TODO: Consider returning an error in the case of a non-ASCII key.
     pub fn press_key(&mut self, ch: char, direction: KeyDirection) -> Result<bool, Error> {
         send_raw_keypress_for_char(ch, direction)
     }
