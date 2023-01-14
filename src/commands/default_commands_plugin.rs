@@ -1,13 +1,16 @@
+use crate::command::SimpleCommand;
 use crate::error::Error;
 use crate::ui::{UserInterface, UserInterfacePlugin};
 
 use super::insert_commands::insert_commands;
 
-pub struct DefaultCommandsPlugin;
+pub struct DefaultCommandsPlugin {
+    counter: usize,
+}
 
 impl DefaultCommandsPlugin {
     pub fn new() -> Box<dyn UserInterfacePlugin> {
-        Box::new(DefaultCommandsPlugin)
+        Box::new(DefaultCommandsPlugin { counter: 0 })
     }
 }
 
@@ -23,8 +26,18 @@ impl UserInterfacePlugin for DefaultCommandsPlugin {
         Ok(())
     }
 
-    fn on_quasimode_start(&mut self, _ui: &mut UserInterface) -> Result<(), Error> {
-        println!("TODO: REFRESH DEFAULT COMMANDS");
+    fn on_quasimode_start(&mut self, ui: &mut UserInterface) -> Result<(), Error> {
+        let prev_cmd_name = format!("boop {}", self.counter);
+        ui.remove_command(&prev_cmd_name);
+        self.counter += 1;
+        let new_cmd_name = format!("boop {}", self.counter);
+        let counter = self.counter;
+        ui.add_command(
+            SimpleCommand::new(new_cmd_name, move |ui| {
+                ui.show_message(format!("Boop {}!", counter))
+            })
+            .into_box(),
+        );
         Ok(())
     }
 }
