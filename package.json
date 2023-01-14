@@ -1,0 +1,22 @@
+{
+  "name": "enso-rs",
+  "version": "1.0.0",
+  "description": "This is a very experimental rewrite of Enso in Rust.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toolness/enso-rs.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/toolness/enso-rs/issues"
+  },
+  "homepage": "https://github.com/toolness/enso-rs#readme",
+  "dependencies": {
+    "@types/node": "^18.11.18",
+    "typescript": "^4.9.4"
+  }
+}

@@ -41,7 +41,7 @@ function formatForCommandName(value) {
 
   for (let i = 0; i < value.length; i++) {
     let codePoint = value.codePointAt(i);
-    if (codePoint < 32 || codePoint > 126) {
+    if (codePoint !== undefined && (codePoint < 32 || codePoint > 126)) {
       if (!unknownChars.has(codePoint)) {
         unknownChars.add(codePoint);
         console.warn(`WARNING: Unicode codepoint ${codePoint} is not currently supported by Enso:`);
