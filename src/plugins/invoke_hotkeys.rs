@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::system::{get_enso_home_dir, press_key, press_modifier_key, KeyDirection, ModifierKey};
+use crate::system::{get_enso_home_dir, press_key, GraphicKey, KeyDirection, VirtualKey};
 use crate::ui::{UserInterface, UserInterfacePlugin};
 
 #[derive(Default)]
@@ -10,10 +10,12 @@ impl UserInterfacePlugin for InvokeHotkeysPlugin {
         let _ = get_enso_home_dir()?;
 
         ui.add_simple_command("copy to clipboard", |_ui| {
-            press_modifier_key(ModifierKey::Control, KeyDirection::Down)?;
-            press_key('c', KeyDirection::Down)?;
-            press_key('c', KeyDirection::Up)?;
-            press_modifier_key(ModifierKey::Control, KeyDirection::Up)?;
+            let ctrl_key = VirtualKey::Control;
+            let c_key = VirtualKey::Graphic(GraphicKey::new('c').unwrap());
+            press_key(ctrl_key, KeyDirection::Down)?;
+            press_key(c_key, KeyDirection::Down)?;
+            press_key(c_key, KeyDirection::Up)?;
+            press_key(ctrl_key, KeyDirection::Up)?;
 
             Ok(())
         });

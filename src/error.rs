@@ -18,8 +18,8 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn new(msg: &str) -> Self {
-        Error::Other(msg.into())
+    pub fn new<T: AsRef<str>>(msg: T) -> Self {
+        Error::Other(msg.as_ref().into())
     }
 
     pub fn get_last_windows_api_error() -> DWORD {

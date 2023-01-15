@@ -13,26 +13,75 @@ pub enum KeyDirection {
     Down,
 }
 
-#[derive(Debug)]
-pub enum ModifierKey {
+#[derive(Debug, Copy, Clone)]
+pub enum VirtualKey {
     Shift,
     Alt,
     Control,
+    Escape,
+    Space,
+    Enter,
+    Graphic(GraphicKey),
 }
 
-pub fn press_modifier_key(key: ModifierKey, direction: KeyDirection) -> Result<(), Error> {
-    crate::windows_util::send_modifier_keypress(key, direction)
+impl From<VirtualKey> for u8 {
+    fn from(vk: VirtualKey) -> Self {
+        match vk {
+            VirtualKey::Shift => 0x10,
+            VirtualKey::Alt => 0x12,
+            VirtualKey::Control => 0x11,
+            VirtualKey::Escape => 0x1B,
+            VirtualKey::Space => 0x20,
+            VirtualKey::Enter => 0x0D,
+            VirtualKey::Graphic(g) => g.into(),
+        }
+    }
 }
 
-/// Press the key that corresponds to the given ASCII character. Use this
-/// if you are simulating a hotkey combination, etc.
+#[derive(Debug, Copy, Clone)]
+/// Encapsulates a virtual key that represents an ASCII graphic code. See
+/// `std::char::is_ascii_graphic` for more information:
 ///
-/// Returns true if the key was pressed, or false if the key was not an ASCII key
-/// that could be pressed.
-///
-/// TODO: Consider returning an error in the case of a non-ASCII key.
-pub fn press_key(ch: char, direction: KeyDirection) -> Result<bool, Error> {
-    crate::windows_util::send_raw_keypress_for_char(ch, direction)
+///    https://doc.rust-lang.org/std/primitive.char.html#method.is_ascii_graphic
+pub struct GraphicKey {
+    ch: char,
+}
+
+impl GraphicKey {
+    pub fn new(ch: char) -> Option<Self> {
+        if ch.is_ascii_lowercase() {
+            Some(GraphicKey {
+                ch: ch.to_ascii_uppercase(),
+            })
+        } else if ch.is_ascii_graphic() {
+            Some(GraphicKey { ch })
+        } else {
+            None
+        }
+    }
+
+    pub fn char(&self) -> char {
+        self.ch
+    }
+}
+
+impl From<GraphicKey> for char {
+    fn from(gk: GraphicKey) -> Self {
+        gk.ch
+    }
+}
+
+impl From<GraphicKey> for u8 {
+    fn from(gk: GraphicKey) -> Self {
+        gk.ch as u8
+    }
+}
+
+/// Press the given key. Use this if you are simulating a hotkey combination, etc.
+/// This will take into account the current modifier keys, so e.g. pressing 'c' will
+/// only end up uppercase if the shift key is down.
+pub fn press_key(ch: VirtualKey, direction: KeyDirection) -> Result<(), Error> {
+    crate::windows_util::send_virtual_keypress(ch, direction)
 }
 
 /// Insert the given unicode character into the current application. This doesn't
