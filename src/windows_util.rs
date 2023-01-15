@@ -7,7 +7,7 @@ use winapi::um::winuser::{
     KEYEVENTF_UNICODE, MSG, SM_CXSCREEN, SM_CYSCREEN, VK_CAPITAL,
 };
 
-use crate::ui::{KeyDirection, ModifierKey};
+use crate::system::{KeyDirection, ModifierKey};
 
 use super::error::Error;
 
@@ -45,6 +45,10 @@ pub fn send_modifier_keypress(key: ModifierKey, direction: KeyDirection) -> Resu
 pub fn send_raw_keypress_for_char(ch: char, direction: KeyDirection) -> Result<bool, Error> {
     let vkey = char_to_vkey(ch);
     if let Some(vk) = vkey {
+        println!(
+            "Raw keypress: vk: {:x}, direction: {:?}, ch={}",
+            vk, direction, ch
+        );
         send_keypress(vk, direction)?;
         Ok(true)
     } else {
@@ -53,6 +57,7 @@ pub fn send_raw_keypress_for_char(ch: char, direction: KeyDirection) -> Result<b
 }
 
 fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {
+    println!("send_keypress: vk: {:x}, direction: {:?}", vk, direction);
     unsafe {
         let mut u: INPUT_u = Default::default();
         let mut ki = u.ki_mut();
@@ -156,12 +161,24 @@ fn test_disable_caps_lock() {
     assert!(disable_caps_lock().is_ok());
 }
 
-pub fn char_to_vkey(char: char) -> Option<i32> {
-    match char.to_ascii_uppercase() {
-        '0'..='9' => Some(VK_0 + (char as u8 - '0' as u8) as i32),
-        'A'..='Z' => Some(VK_A + (char as u8 - 'A' as u8) as i32),
+pub fn char_to_vkey(mut char: char) -> Option<i32> {
+    if char.is_ascii_lowercase() {
+        char = char.to_ascii_uppercase();
+    }
+    match char {
+        '0'..='9' => Some(char as i32),
+        'A'..='Z' => Some(char as i32),
         ' ' => Some(winuser::VK_SPACE),
-        _ => None,
+        '\x08' => Some(winuser::VK_BACK),
+        '\x0d' => Some(winuser::VK_RETURN),
+        '\x1b' => Some(winuser::VK_ESCAPE),
+        _ => {
+            if char.is_ascii_graphic() {
+                Some(char as i32)
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -182,4 +199,16 @@ fn test_vkey_to_char() {
     assert_eq!(vkey_to_char(VK_A + 3), Some('D'));
     assert_eq!(vkey_to_char(VK_Z), Some('Z'));
     assert_eq!(vkey_to_char(winuser::VK_F1), None);
+}
+
+#[test]
+fn test_char_to_vkey() {
+    assert_eq!(char_to_vkey('0'), Some(VK_0));
+    assert_eq!(char_to_vkey('3'), Some(VK_0 + 3));
+    assert_eq!(char_to_vkey('9'), Some(VK_9));
+    assert_eq!(char_to_vkey('A'), Some(VK_A));
+    assert_eq!(char_to_vkey('D'), Some(VK_A + 3));
+    assert_eq!(char_to_vkey('c'), Some(VK_A + 2));
+    assert_eq!(char_to_vkey('Z'), Some(VK_Z));
+    assert_eq!(char_to_vkey(' '), Some(winuser::VK_SPACE));
 }

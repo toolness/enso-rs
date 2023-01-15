@@ -10,7 +10,6 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use winapi::um::winuser::{VK_BACK, VK_DOWN, VK_UP};
 
 use crate::command::SimpleCommand;
-use crate::windows_util::{send_modifier_keypress, send_raw_keypress_for_char};
 
 use super::autocomplete_map::{AutocompleteMap, AutocompleteSuggestion};
 use super::command::Command;
@@ -19,7 +18,7 @@ use super::error::Error;
 use super::keyboard_hook::HookEvent;
 use super::menu::Menu;
 use super::transparent_window::TransparentWindow;
-use super::windows_util::{get_primary_screen_size, send_unicode_keypress, vkey_to_char};
+use super::windows_util::{get_primary_screen_size, vkey_to_char};
 
 type ColorAlpha = (u32, f32);
 
@@ -39,17 +38,6 @@ const MESSAGE_MAXWIDTH_PCT: f32 = 0.5;
 const NOCMD_HELP: &'static str = "No command matches your input.";
 const EMPTY_INPUT_HELP: &'static str =
     "Welcome to Enso! Enter a command, or type \u{201C}help\u{201D} for assistance.";
-
-pub enum KeyDirection {
-    Up,
-    Down,
-}
-
-pub enum ModifierKey {
-    Shift,
-    Alt,
-    Control,
-}
 
 fn make_simple_brush<T: RenderTarget>(
     target: &mut T,
@@ -309,31 +297,6 @@ impl UserInterface {
             &self.text_format,
         )?);
         Ok(())
-    }
-
-    pub fn press_modifier_key(
-        &mut self,
-        key: ModifierKey,
-        direction: KeyDirection,
-    ) -> Result<(), Error> {
-        send_modifier_keypress(key, direction)
-    }
-
-    /// Press the key that corresponds to the given ASCII character. Use this
-    /// if you are simulating a hotkey combination, etc.
-    ///
-    /// Returns true if the key was pressed, or false if the key was not an ASCII key
-    /// that could be pressed.
-    ///
-    /// TODO: Consider returning an error in the case of a non-ASCII key.
-    pub fn press_key(&mut self, ch: char, direction: KeyDirection) -> Result<bool, Error> {
-        send_raw_keypress_for_char(ch, direction)
-    }
-
-    /// Insert the given unicode character into the current application. This doesn't
-    /// take into account the current modifier keys or anything.
-    pub fn type_char(&mut self, ch: &str) -> Result<(), Error> {
-        send_unicode_keypress(ch)
     }
 
     pub fn process_event_receiver(

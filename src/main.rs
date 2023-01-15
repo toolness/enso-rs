@@ -12,6 +12,7 @@ mod event_loop;
 mod keyboard_hook;
 mod menu;
 mod plugins;
+mod system;
 mod transparent_window;
 mod ui;
 mod windows_util;
