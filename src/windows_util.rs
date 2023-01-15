@@ -38,7 +38,6 @@ pub fn send_virtual_keypress(key: VirtualKey, direction: KeyDirection) -> Result
 }
 
 fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {
-    println!("send_keypress: vk: {:x}, direction: {:?}", vk, direction);
     unsafe {
         let mut u: INPUT_u = Default::default();
         let mut ki = u.ki_mut();
