@@ -125,6 +125,7 @@ pub fn get_enso_home_dir() -> Result<PathBuf, Error> {
 
     if !home_dir.exists() {
         println!("Creating Enso home directory at {:?}.", home_dir);
+        std::fs::create_dir_all(home_dir.clone())?;
     }
 
     Ok(home_dir)

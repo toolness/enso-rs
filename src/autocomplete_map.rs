@@ -98,12 +98,16 @@ impl<T: Clone> AutocompleteMap<T> {
         }
     }
 
-    pub fn insert<U: Into<String>>(&mut self, name: U, value: T) {
-        self.entries.insert(name.into(), value);
+    pub fn insert<U: Into<String>>(&mut self, name: U, value: T) -> Option<T> {
+        self.entries.insert(name.into(), value)
     }
 
     pub fn remove<U: AsRef<str>>(&mut self, name: U) -> Option<T> {
         self.entries.remove(name.as_ref())
+    }
+
+    pub fn contains<U: AsRef<str>>(&self, name: U) -> bool {
+        self.entries.contains_key(name.as_ref())
     }
 
     pub fn autocomplete<U: AsRef<str>>(

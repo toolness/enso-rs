@@ -14,6 +14,7 @@ pub enum Error {
     WindowsAPIGeneric,
     Direct2DWithRenderTag(direct2d::error::Error, &'static str),
     DirectWrite(DWriteError),
+    IOError(std::io::Error),
     Other(Box<dyn std::error::Error>),
 }
 
@@ -106,6 +107,12 @@ type D2DErrorWithRenderTag = (
     direct2d::error::Error,
     Option<direct2d::render_target::RenderTag>,
 );
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Error {
+        Error::IOError(err)
+    }
+}
 
 impl From<D2DErrorWithRenderTag> for Error {
     fn from(err_with_tag: D2DErrorWithRenderTag) -> Error {

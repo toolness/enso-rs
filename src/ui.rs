@@ -280,8 +280,18 @@ impl UserInterface {
         self.commands.remove(command_name)
     }
 
+    pub fn has_command<T: AsRef<str>>(&mut self, command_name: T) -> bool {
+        self.commands.contains(command_name)
+    }
+
+    /// Adds the given command to the UI *only* if the given command doesn't yet exist.
+    ///
+    /// If the command already exists, nothing happens.
     pub fn add_command(&mut self, command: Box<dyn Command>) {
-        self.commands.insert(command.name(), command);
+        let command_name = command.name();
+        if !self.has_command(&command_name) {
+            self.commands.insert(command_name, command);
+        }
     }
 
     pub fn quit(&mut self) -> Result<(), Error> {
