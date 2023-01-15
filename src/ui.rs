@@ -288,10 +288,6 @@ impl UserInterface {
         self.add_command(Box::new(SimpleCommand::new(name, callback)));
     }
 
-    pub fn remove_command<T: AsRef<str>>(&mut self, command_name: T) -> Option<Box<dyn Command>> {
-        self.commands.remove(command_name)
-    }
-
     pub fn add_command(&mut self, command: Box<dyn Command>) {
         self.commands.insert(command.name(), command);
     }

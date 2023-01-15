@@ -102,10 +102,6 @@ impl<T: Clone> AutocompleteMap<T> {
         self.entries.insert(name.into(), value);
     }
 
-    pub fn remove<U: AsRef<str>>(&mut self, name: U) -> Option<T> {
-        self.entries.remove(name.as_ref())
-    }
-
     pub fn autocomplete<U: AsRef<str>>(
         &self,
         input: U,
