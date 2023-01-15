@@ -58,6 +58,7 @@ impl InvokeHotkeysPlugin {
 
     pub fn reload(&mut self, ui: &mut UserInterface, hotkeys_path: PathBuf) -> Result<(), Error> {
         println!("Parsing hotkeys from \"{}\".", hotkeys_path.display());
+        let mut warnings: Vec<String> = Vec::new();
         let mut commands: Vec<Box<dyn Command>> = Vec::new();
         let mut line_no = 0;
         for line in std::fs::read_to_string(hotkeys_path)?.lines() {
@@ -71,7 +72,7 @@ impl InvokeHotkeysPlugin {
             match HotkeyCombination::try_from(hotkey_str) {
                 Ok(hotkey) => {
                     let Some(command_name) = parts.next() else {
-                        eprintln!("No colon found on line {}: {}", line_no, line);
+                        warnings.push(format!("No colon found on line {}: {}", line_no, line));
                         continue;
                     };
                     let command_name = format!("{} ({})", command_name.trim(), hotkey_str);
@@ -80,10 +81,19 @@ impl InvokeHotkeysPlugin {
                     commands.push(command.into_box());
                 }
                 Err(e) => {
-                    eprintln!("Error parsing hotkey on line {}: {}", line_no, e);
+                    warnings.push(format!("Error parsing hotkey on line {}: {}", line_no, e));
                     continue;
                 }
             }
+        }
+
+        if warnings.len() > 0 {
+            let message = format!(
+                "Problems occurred while parsing hotkeys file:\n{}",
+                warnings.join("\n")
+            );
+            eprintln!("{}", message);
+            ui.show_message(message)?;
         }
 
         self.unload(ui)?;

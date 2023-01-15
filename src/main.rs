@@ -38,7 +38,9 @@ fn run_enso() -> Result<(), Box<error::Error>> {
         ui.add_plugin(plugin)?;
     }
 
-    ui.show_message("Welcome to Enso!")?;
+    if !ui.is_showing_message() {
+        ui.show_message("Welcome to Enso!")?;
+    }
 
     println!("Starting Enso.");
     println!("To exit, hold down CAPS LOCK and type 'QUIT'.");

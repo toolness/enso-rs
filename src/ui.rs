@@ -299,6 +299,10 @@ impl UserInterface {
         Ok(())
     }
 
+    pub fn is_showing_message(&self) -> bool {
+        self.message.is_some()
+    }
+
     pub fn show_message<S: Into<String>>(&mut self, text: S) -> Result<(), Error> {
         self.message = Some(TransparentMessageRenderer::new(
             text.into(),
