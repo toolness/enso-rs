@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{convert::TryFrom, path::PathBuf};
 
 /// This module is intened to provide an OS-independent way to access system functionality
 /// that platform-independent commands can use.
@@ -22,6 +22,31 @@ pub enum VirtualKey {
     Space,
     Enter,
     Graphic(GraphicKey),
+}
+
+impl TryFrom<&str> for VirtualKey {
+    type Error = Error;
+
+    fn try_from(key: &str) -> Result<Self, Self::Error> {
+        if key.len() == 1 {
+            let key = key.chars().next().unwrap();
+            if let Some(key) = GraphicKey::new(key) {
+                Ok(VirtualKey::Graphic(key))
+            } else {
+                Err(Error::new(format!("Unsupported virtual key: {}", key)))
+            }
+        } else {
+            match key.to_ascii_lowercase().as_str() {
+                "shift" => Ok(VirtualKey::Shift),
+                "alt" => Ok(VirtualKey::Alt),
+                "control" | "ctrl" => Ok(VirtualKey::Control),
+                "escape" => Ok(VirtualKey::Escape),
+                "space" => Ok(VirtualKey::Space),
+                "enter" => Ok(VirtualKey::Enter),
+                _ => Err(Error::new(format!("Unsupported virtual key: {}", key))),
+            }
+        }
+    }
 }
 
 impl From<VirtualKey> for u8 {
