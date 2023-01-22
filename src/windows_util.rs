@@ -34,7 +34,28 @@ pub fn to_lpcstr(name: &'static [u8]) -> *const i8 {
 }
 
 pub fn send_virtual_keypress(key: VirtualKey, direction: KeyDirection) -> Result<(), Error> {
-    send_keypress(u8::from(key) as i32, direction)
+    let vk: i32 = match key {
+        VirtualKey::Shift => 0x10,
+        VirtualKey::Alt => 0x12,
+        VirtualKey::Control => 0x11,
+        VirtualKey::Escape => 0x1B,
+        VirtualKey::Space => 0x20,
+        VirtualKey::Enter => 0x0D,
+        VirtualKey::F1 => 0x70,
+        VirtualKey::F2 => 0x71,
+        VirtualKey::F3 => 0x72,
+        VirtualKey::F4 => 0x73,
+        VirtualKey::F5 => 0x74,
+        VirtualKey::F6 => 0x75,
+        VirtualKey::F7 => 0x76,
+        VirtualKey::F8 => 0x77,
+        VirtualKey::F9 => 0x78,
+        VirtualKey::F10 => 0x79,
+        VirtualKey::F11 => 0x7A,
+        VirtualKey::F12 => 0x7B,
+        VirtualKey::Alphanumeric(a) => u8::from(a) as i32,
+    };
+    send_keypress(vk, direction)
 }
 
 fn send_keypress(vk: i32, direction: KeyDirection) -> Result<(), Error> {

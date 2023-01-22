@@ -33,7 +33,7 @@ pub enum VirtualKey {
     F10,
     F11,
     F12,
-    Graphic(GraphicKey),
+    Alphanumeric(AlphanumericKey),
 }
 
 impl TryFrom<&str> for VirtualKey {
@@ -42,8 +42,8 @@ impl TryFrom<&str> for VirtualKey {
     fn try_from(key: &str) -> Result<Self, Self::Error> {
         if key.len() == 1 {
             let key = key.chars().next().unwrap();
-            if let Some(key) = GraphicKey::new(key) {
-                Ok(VirtualKey::Graphic(key))
+            if let Some(key) = AlphanumericKey::new(key) {
+                Ok(VirtualKey::Alphanumeric(key))
             } else {
                 Err(Error::new(format!("Unsupported virtual key: {}", key)))
             }
@@ -73,49 +73,20 @@ impl TryFrom<&str> for VirtualKey {
     }
 }
 
-impl From<VirtualKey> for u8 {
-    fn from(vk: VirtualKey) -> Self {
-        match vk {
-            VirtualKey::Shift => 0x10,
-            VirtualKey::Alt => 0x12,
-            VirtualKey::Control => 0x11,
-            VirtualKey::Escape => 0x1B,
-            VirtualKey::Space => 0x20,
-            VirtualKey::Enter => 0x0D,
-            VirtualKey::F1 => 0x70,
-            VirtualKey::F2 => 0x71,
-            VirtualKey::F3 => 0x72,
-            VirtualKey::F4 => 0x73,
-            VirtualKey::F5 => 0x74,
-            VirtualKey::F6 => 0x75,
-            VirtualKey::F7 => 0x76,
-            VirtualKey::F8 => 0x77,
-            VirtualKey::F9 => 0x78,
-            VirtualKey::F10 => 0x79,
-            VirtualKey::F11 => 0x7A,
-            VirtualKey::F12 => 0x7B,
-            VirtualKey::Graphic(g) => g.into(),
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone)]
-/// Encapsulates a virtual key that represents an ASCII graphic code. See
-/// `std::char::is_ascii_graphic` for more information:
-///
-///    https://doc.rust-lang.org/std/primitive.char.html#method.is_ascii_graphic
-pub struct GraphicKey {
+/// Encapsulates a virtual key that represents an ASCII digit from 0-9 or letter A-Z.
+pub struct AlphanumericKey {
     ch: char,
 }
 
-impl GraphicKey {
+impl AlphanumericKey {
     pub fn new(ch: char) -> Option<Self> {
         if ch.is_ascii_lowercase() {
-            Some(GraphicKey {
+            Some(AlphanumericKey {
                 ch: ch.to_ascii_uppercase(),
             })
-        } else if ch.is_ascii_graphic() {
-            Some(GraphicKey { ch })
+        } else if ch.is_ascii_uppercase() || ch.is_ascii_digit() {
+            Some(AlphanumericKey { ch })
         } else {
             None
         }
@@ -126,14 +97,14 @@ impl GraphicKey {
     }
 }
 
-impl From<GraphicKey> for char {
-    fn from(gk: GraphicKey) -> Self {
+impl From<AlphanumericKey> for char {
+    fn from(gk: AlphanumericKey) -> Self {
         gk.ch
     }
 }
 
-impl From<GraphicKey> for u8 {
-    fn from(gk: GraphicKey) -> Self {
+impl From<AlphanumericKey> for u8 {
+    fn from(gk: AlphanumericKey) -> Self {
         gk.ch as u8
     }
 }
