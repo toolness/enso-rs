@@ -360,7 +360,13 @@ impl UserInterface {
                 self.quasimode = None;
                 if let Some(menu) = self.menu.take() {
                     let mut sugg = menu.into_selected_entry();
-                    sugg.value.execute(self)?;
+
+                    if let Err(error) = sugg.value.execute(self) {
+                        self.show_message(format!(
+                            "An error occurred when running the command: {}",
+                            error
+                        ))?;
+                    }
                 } else if self.input.len() > 0 {
                     println!("Unknown command '{}'.", self.input);
                     self.show_message(format!(

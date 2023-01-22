@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, path::PathBuf};
+use std::{convert::TryFrom, path::PathBuf, process::Command};
 
 /// This module is intened to provide an OS-independent way to access system functionality
 /// that platform-independent commands can use.
@@ -137,4 +137,15 @@ pub fn get_enso_home_dir() -> Result<PathBuf, Error> {
     }
 
     Ok(home_dir)
+}
+
+pub fn open_in_explorer(path: &PathBuf) -> Result<(), Error> {
+    if cfg!(target_os = "windows") {
+        Command::new("explorer").arg(&path.as_os_str()).spawn()?;
+    } else if cfg!(target_os = "macos") {
+        Command::new("open").arg(&path.as_os_str()).spawn()?;
+    } else {
+        return Err(Error::new("Unsupported OS"));
+    }
+    Ok(())
 }
