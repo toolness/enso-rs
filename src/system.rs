@@ -21,6 +21,8 @@ pub enum VirtualKey {
     Escape,
     Space,
     Enter,
+    LeftBracket,
+    RightBracket,
     F1,
     F2,
     F3,
@@ -43,32 +45,31 @@ impl TryFrom<&str> for VirtualKey {
         if key.len() == 1 {
             let key = key.chars().next().unwrap();
             if let Some(key) = AlphanumericKey::new(key) {
-                Ok(VirtualKey::Alphanumeric(key))
-            } else {
-                Err(Error::new(format!("Unsupported virtual key: {}", key)))
+                return Ok(VirtualKey::Alphanumeric(key));
             }
-        } else {
-            match key.to_ascii_lowercase().as_str() {
-                "shift" => Ok(VirtualKey::Shift),
-                "alt" => Ok(VirtualKey::Alt),
-                "control" | "ctrl" => Ok(VirtualKey::Control),
-                "escape" => Ok(VirtualKey::Escape),
-                "space" => Ok(VirtualKey::Space),
-                "enter" => Ok(VirtualKey::Enter),
-                "f1" => Ok(VirtualKey::F1),
-                "f2" => Ok(VirtualKey::F2),
-                "f3" => Ok(VirtualKey::F3),
-                "f4" => Ok(VirtualKey::F4),
-                "f5" => Ok(VirtualKey::F5),
-                "f6" => Ok(VirtualKey::F6),
-                "f7" => Ok(VirtualKey::F7),
-                "f8" => Ok(VirtualKey::F8),
-                "f9" => Ok(VirtualKey::F9),
-                "f10" => Ok(VirtualKey::F10),
-                "f11" => Ok(VirtualKey::F11),
-                "f12" => Ok(VirtualKey::F12),
-                _ => Err(Error::new(format!("Unsupported virtual key: {}", key))),
-            }
+        }
+        match key.to_ascii_lowercase().as_str() {
+            "shift" => Ok(VirtualKey::Shift),
+            "alt" => Ok(VirtualKey::Alt),
+            "control" | "ctrl" => Ok(VirtualKey::Control),
+            "escape" => Ok(VirtualKey::Escape),
+            "space" => Ok(VirtualKey::Space),
+            "enter" => Ok(VirtualKey::Enter),
+            "[" => Ok(VirtualKey::LeftBracket),
+            "]" => Ok(VirtualKey::RightBracket),
+            "f1" => Ok(VirtualKey::F1),
+            "f2" => Ok(VirtualKey::F2),
+            "f3" => Ok(VirtualKey::F3),
+            "f4" => Ok(VirtualKey::F4),
+            "f5" => Ok(VirtualKey::F5),
+            "f6" => Ok(VirtualKey::F6),
+            "f7" => Ok(VirtualKey::F7),
+            "f8" => Ok(VirtualKey::F8),
+            "f9" => Ok(VirtualKey::F9),
+            "f10" => Ok(VirtualKey::F10),
+            "f11" => Ok(VirtualKey::F11),
+            "f12" => Ok(VirtualKey::F12),
+            _ => Err(Error::new(format!("Unsupported virtual key: {}", key))),
         }
     }
 }
