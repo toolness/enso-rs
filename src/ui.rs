@@ -363,7 +363,7 @@ impl UserInterface {
 
                     if let Err(error) = sugg.value.execute(self) {
                         self.show_message(format!(
-                            "An error occurred when running the command: {}",
+                            "An error occurred when running the command:\n{}",
                             error
                         ))?;
                     }
