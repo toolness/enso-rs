@@ -34,6 +34,7 @@ pub fn to_lpcstr(name: &'static [u8]) -> *const i8 {
 }
 
 pub fn send_virtual_keypress(key: VirtualKey, direction: KeyDirection) -> Result<(), Error> {
+    // https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
     let vk: i32 = match key {
         VirtualKey::Shift => winuser::VK_SHIFT,
         VirtualKey::Alt => winuser::VK_MENU,
