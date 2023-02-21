@@ -44,6 +44,8 @@ pub fn send_virtual_keypress(key: VirtualKey, direction: KeyDirection) -> Result
         VirtualKey::Enter => winuser::VK_RETURN,
         VirtualKey::LeftBracket => winuser::VK_OEM_4,
         VirtualKey::RightBracket => winuser::VK_OEM_6,
+        VirtualKey::PgUp => winuser::VK_PRIOR,
+        VirtualKey::PgDn => winuser::VK_NEXT,
         VirtualKey::F1 => winuser::VK_F1,
         VirtualKey::F2 => winuser::VK_F2,
         VirtualKey::F3 => winuser::VK_F3,
