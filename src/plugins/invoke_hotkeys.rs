@@ -6,6 +6,7 @@ use crate::command::{Command, SimpleCommand};
 use crate::error::Error;
 use crate::system::{get_enso_home_dir, press_key, KeyDirection, VirtualKey};
 use crate::ui::{UserInterface, UserInterfacePlugin};
+use crate::windows_util::{get_foreground_executable_path, get_foreground_window_name};
 
 #[derive(Debug, Clone)]
 struct HotkeyCombination {
@@ -143,7 +144,17 @@ impl InvokeHotkeysPlugin {
 
 impl UserInterfacePlugin for InvokeHotkeysPlugin {
     fn init(&mut self, ui: &mut UserInterface) -> Result<(), Error> {
-        self.maybe_reload(ui)
+        self.maybe_reload(ui)?;
+        ui.add_simple_command("show foreground window info", |ui| {
+            let window_name = get_foreground_window_name().unwrap_or(String::from("ERR"));
+            let executable_path = get_foreground_executable_path().unwrap_or(String::from("ERR"));
+            ui.show_message(format!(
+                "Window name: {}\nExecutable path: {}",
+                window_name, executable_path
+            ))?;
+            Ok(())
+        });
+        Ok(())
     }
 
     fn on_quasimode_start(&mut self, ui: &mut UserInterface) -> Result<(), Error> {

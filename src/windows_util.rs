@@ -1,7 +1,11 @@
 use std::ffi::CStr;
 use std::ptr::null_mut;
 use winapi::shared::windef::POINT;
-use winapi::um::winuser;
+use winapi::um::handleapi::CloseHandle;
+use winapi::um::processthreadsapi::OpenProcess;
+use winapi::um::psapi::GetModuleFileNameExW;
+use winapi::um::winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+use winapi::um::winuser::{self, GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId};
 use winapi::um::winuser::{
     GetKeyState, GetSystemMetrics, INPUT_u, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE, MSG, SM_CXSCREEN, SM_CYSCREEN, VK_CAPITAL,
@@ -155,6 +159,58 @@ pub fn get_primary_screen_size() -> Result<(u32, u32), Error> {
     let width = get_system_metrics(SM_CXSCREEN)? as u32;
     let height = get_system_metrics(SM_CYSCREEN)? as u32;
     Ok((width, height))
+}
+
+pub fn get_foreground_executable_path() -> Result<String, Error> {
+    let hwnd = unsafe { GetForegroundWindow() };
+    if hwnd.is_null() {
+        return Err(Error::WindowsAPIGeneric);
+    }
+
+    let mut pid = 0;
+    unsafe {
+        GetWindowThreadProcessId(hwnd, &mut pid);
+    }
+
+    let process = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid) };
+    if process.is_null() {
+        return Err(Error::WindowsAPIGeneric);
+    }
+
+    let mut buf = [0u16; 256];
+    let len = unsafe {
+        GetModuleFileNameExW(
+            process,
+            std::ptr::null_mut(),
+            buf.as_mut_ptr(),
+            buf.len() as u32,
+        )
+    };
+    unsafe {
+        CloseHandle(process);
+    }
+    if len == 0 {
+        return Err(Error::WindowsAPIGeneric);
+    }
+
+    let path = String::from_utf16_lossy(&buf[..len as usize]);
+    Ok(path)
+}
+
+pub fn get_foreground_window_name() -> Result<String, Error> {
+    let hwnd = unsafe { GetForegroundWindow() };
+    if hwnd.is_null() {
+        return Err(Error::WindowsAPIGeneric);
+    }
+
+    let mut buf = [0u16; 256];
+    let len = unsafe { GetWindowTextW(hwnd, buf.as_mut_ptr(), buf.len() as i32) };
+    if len == 0 {
+        return Err(Error::WindowsAPIGeneric);
+    }
+
+    let name = String::from_utf16_lossy(&buf[..len as usize]);
+    Ok(name)
 }
 
 #[test]
