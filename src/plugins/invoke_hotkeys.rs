@@ -4,9 +4,11 @@ use std::time::SystemTime;
 
 use crate::command::SimpleCommand;
 use crate::error::Error;
-use crate::system::{get_enso_home_dir, press_key, KeyDirection, VirtualKey};
+use crate::system::{
+    get_enso_home_dir, get_foreground_executable_path, get_foreground_window_name, press_key,
+    KeyDirection, VirtualKey,
+};
 use crate::ui::{UserInterface, UserInterfacePlugin};
-use crate::windows_util::{get_foreground_executable_path, get_foreground_window_name};
 
 #[derive(Debug, Clone)]
 struct HotkeyCombination {

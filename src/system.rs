@@ -5,7 +5,7 @@ use std::{convert::TryFrom, path::PathBuf, process::Command};
 ///
 /// Right now it only supports Windows, but that's because Enso only really supports
 /// Windows currently.
-use crate::error::Error;
+use crate::{error::Error, windows_util};
 
 #[derive(Debug)]
 pub enum KeyDirection {
@@ -140,13 +140,13 @@ impl From<AlphanumericKey> for u8 {
 /// This will take into account the current modifier keys, so e.g. pressing 'c' will
 /// only end up uppercase if the shift key is down.
 pub fn press_key(ch: VirtualKey, direction: KeyDirection) -> Result<(), Error> {
-    crate::windows_util::send_virtual_keypress(ch, direction)
+    windows_util::send_virtual_keypress(ch, direction)
 }
 
 /// Insert the given unicode character into the current application. This doesn't
 /// take into account the current modifier keys or anything.
 pub fn type_char(ch: &str) -> Result<(), Error> {
-    crate::windows_util::send_unicode_keypress(ch)
+    windows_util::send_unicode_keypress(ch)
 }
 
 /// Returns Enso's home directory for the current user, usually found at
@@ -174,4 +174,12 @@ pub fn open_in_explorer(path: &PathBuf) -> Result<(), Error> {
         return Err(Error::new("Unsupported OS"));
     }
     Ok(())
+}
+
+pub fn get_foreground_executable_path() -> Result<String, Error> {
+    windows_util::get_foreground_executable_path()
+}
+
+pub fn get_foreground_window_name() -> Result<String, Error> {
+    windows_util::get_foreground_window_name()
 }
