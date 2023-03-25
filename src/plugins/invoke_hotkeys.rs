@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::path::PathBuf;
-use std::time::SystemTime;
+use std::thread::sleep;
+use std::time::{Duration, SystemTime};
 
 use crate::command::SimpleCommand;
 use crate::error::Error;
@@ -9,6 +10,9 @@ use crate::system::{
     KeyDirection, VirtualKey,
 };
 use crate::ui::{UserInterface, UserInterfacePlugin};
+
+// Some programs need a bit of time between keypresses to register them properly.
+const TIME_BETWEEN_KEYPRESSES_MS: u64 = 20;
 
 #[derive(Debug, Clone)]
 struct HotkeyCombination {
@@ -19,9 +23,11 @@ impl HotkeyCombination {
     pub fn press(&self) -> Result<(), Error> {
         for key in self.keys.iter() {
             press_key(*key, KeyDirection::Down)?;
+            sleep(Duration::from_millis(TIME_BETWEEN_KEYPRESSES_MS));
         }
         for key in self.keys.iter().rev() {
             press_key(*key, KeyDirection::Up)?;
+            sleep(Duration::from_millis(TIME_BETWEEN_KEYPRESSES_MS));
         }
         Ok(())
     }
